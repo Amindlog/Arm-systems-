@@ -39,11 +39,23 @@ const LayerObjectForm = ({ position, address, layerType, objectType, onClose, on
       // Создаем GeoJSON в зависимости от типа объекта
       let geojson;
       if (objectType === 'line') {
-        // Для линии нужны минимум 2 точки, пока используем одну точку как начало
-        geojson = {
-          type: 'LineString',
-          coordinates: [[position.lng, position.lat], [position.lng, position.lat]]
-        };
+        // Для линии нужны 2 точки
+        if (position.startPoint && position.endPoint) {
+          // Две точки - создаем линию между ними
+          geojson = {
+            type: 'LineString',
+            coordinates: [
+              [position.startPoint.lng, position.startPoint.lat],
+              [position.endPoint.lng, position.endPoint.lat]
+            ]
+          };
+        } else {
+          // Если только одна точка - используем ее для обеих координат (временное решение)
+          geojson = {
+            type: 'LineString',
+            coordinates: [[position.lng, position.lat], [position.lng, position.lat]]
+          };
+        }
       } else {
         // Для колодца и камеры - точка
         geojson = {
@@ -190,10 +202,17 @@ const LayerObjectForm = ({ position, address, layerType, objectType, onClose, on
           <div className="layer-object-form__info">
             <p><strong>Тип:</strong> {getObjectTypeName()}</p>
             <p><strong>Слой:</strong> {getLayerTypeName()}</p>
-            <p><strong>Координаты:</strong> {position.lat.toFixed(6)}, {position.lng.toFixed(6)}</p>
-            {objectType === 'line' && (
+            {objectType === 'line' && position.startPoint && position.endPoint ? (
+              <>
+                <p><strong>Начальная точка:</strong> {position.startPoint.lat.toFixed(6)}, {position.startPoint.lng.toFixed(6)}</p>
+                <p><strong>Конечная точка:</strong> {position.endPoint.lat.toFixed(6)}, {position.endPoint.lng.toFixed(6)}</p>
+              </>
+            ) : (
+              <p><strong>Координаты:</strong> {position.lat.toFixed(6)}, {position.lng.toFixed(6)}</p>
+            )}
+            {objectType === 'line' && (!position.startPoint || !position.endPoint) && (
               <p className="layer-object-form__note">
-                Примечание: Для линии будет создана начальная точка. Вы сможете продолжить линию позже.
+                Примечание: Для линии нужно выбрать две точки на карте.
               </p>
             )}
           </div>

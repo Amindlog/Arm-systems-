@@ -754,7 +754,7 @@ router.post('/layers/objects', authenticateToken, async (req, res) => {
 router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { layer_type, object_type, geojson, address, description, pipe_size, pipe_length, pipe_material } = req.body;
+    const { layer_type, object_type, geojson, address, description, pipe_size, pipe_length, pipe_material, balance_delimitation } = req.body;
 
     // Проверка существования объекта
     const existingObject = await pool.query('SELECT * FROM layer_objects WHERE id = $1', [id]);
@@ -813,8 +813,15 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
     }
 
     if (pipe_length !== undefined) {
-      updates.push(`pipe_length = $${paramCount++}`);
-      params.push(pipe_length);
+      // Проверяем, что pipe_length - это число или null
+      if (pipe_length === null || (typeof pipe_length === 'number' && !isNaN(pipe_length))) {
+        updates.push(`pipe_length = $${paramCount++}`);
+        params.push(pipe_length);
+      } else {
+        // Если pipe_length не является числом, устанавливаем null
+        updates.push(`pipe_length = $${paramCount++}`);
+        params.push(null);
+      }
     }
 
     if (pipe_material !== undefined) {
@@ -822,12 +829,22 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
       params.push(pipe_material);
     }
 
+    if (balance_delimitation !== undefined) {
+      updates.push(`balance_delimitation = $${paramCount++}`);
+      params.push(balance_delimitation);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: 'Нет полей для обновления' });
     }
 
+    // Добавляем updated_at (не требует параметра)
     updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    
+    // Добавляем id в params для WHERE-условия
+    // paramCount уже указывает на следующий доступный индекс параметра
     params.push(id);
+    const idParamIndex = paramCount;
 
     // Проверяем наличие полей для RETURNING
     let returningFields = 'id, layer_type, object_type, geojson, address, description, pipe_size';
@@ -851,33 +868,60 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
     }
     returningFields += ', created_at, updated_at';
 
-    const result = await pool.query(`
+    // Логирование для отладки
+    console.log('Update query:', {
+      updates: updates.join(', '),
+      idParamIndex,
+      paramsLength: params.length,
+      params: params.map((p, i) => `${i + 1}: ${typeof p === 'object' ? JSON.stringify(p) : p}`)
+    });
+
+    const query = `
       UPDATE layer_objects 
       SET ${updates.join(', ')}
-      WHERE id = $${paramCount}
+      WHERE id = $${idParamIndex}
       RETURNING ${returningFields}
-    `, params);
+    `;
+    
+    console.log('Executing query:', query);
+    console.log('With params:', params);
 
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Объект не найден после обновления' });
+    }
+
+    const row = result.rows[0];
     res.json({
       message: 'Объект слоя успешно обновлен',
       object: {
-        id: result.rows[0].id,
-        layer_type: result.rows[0].layer_type,
-        object_type: result.rows[0].object_type,
-        geojson: result.rows[0].geojson,
-        address: result.rows[0].address,
-        description: result.rows[0].description,
-        pipe_size: result.rows[0].pipe_size,
-        pipe_length: result.rows[0].pipe_length ? parseFloat(result.rows[0].pipe_length) : null,
-        balance_delimitation: result.rows[0].balance_delimitation || null,
-        pipe_material: result.rows[0].pipe_material || null,
-        created_at: result.rows[0].created_at,
-        updated_at: result.rows[0].updated_at
+        id: row.id,
+        layer_type: row.layer_type,
+        object_type: row.object_type,
+        geojson: row.geojson,
+        address: row.address || null,
+        description: row.description || null,
+        pipe_size: row.pipe_size || null,
+        pipe_length: row.pipe_length ? parseFloat(row.pipe_length) : null,
+        balance_delimitation: row.balance_delimitation || null,
+        pipe_material: row.pipe_material || null,
+        created_at: row.created_at,
+        updated_at: row.updated_at
       }
     });
   } catch (error) {
     console.error('Update layer object error:', error);
-    res.status(500).json({ error: 'Ошибка при обновлении объекта слоя' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Ошибка при обновлении объекта слоя',
+      details: error.message 
+    });
   }
 });
 

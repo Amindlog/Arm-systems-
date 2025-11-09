@@ -6,7 +6,8 @@ const PipeEditModal = ({ pipe, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
     pipe_size: '',
     pipe_length: '',
-    balance_delimitation: ''
+    balance_delimitation: '',
+    pipe_material: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,8 @@ const PipeEditModal = ({ pipe, onClose, onUpdate }) => {
       setFormData({
         pipe_size: pipe.pipe_size || '',
         pipe_length: pipe.pipe_length || '',
-        balance_delimitation: pipe.balance_delimitation || ''
+        balance_delimitation: pipe.balance_delimitation || '',
+        pipe_material: pipe.pipe_material || ''
       });
     }
   }, [pipe]);
@@ -36,16 +38,34 @@ const PipeEditModal = ({ pipe, onClose, onUpdate }) => {
     setLoading(true);
 
     try {
-      await api.put(`/map/layers/objects/${pipe.id}`, {
+      const updateData = {
         pipe_size: formData.pipe_size || null,
-        pipe_length: formData.pipe_length ? parseFloat(formData.pipe_length) : null,
-        balance_delimitation: formData.balance_delimitation || null
-      });
+        balance_delimitation: formData.balance_delimitation || null,
+        pipe_material: formData.pipe_material || null
+      };
+
+      // Обрабатываем pipe_length отдельно, чтобы избежать NaN
+      if (formData.pipe_length && formData.pipe_length.trim() !== '') {
+        const parsedLength = parseFloat(formData.pipe_length);
+        if (!isNaN(parsedLength)) {
+          updateData.pipe_length = parsedLength;
+        } else {
+          updateData.pipe_length = null;
+        }
+      } else {
+        updateData.pipe_length = null;
+      }
+
+      console.log('Отправка данных для обновления трубы:', JSON.stringify(updateData, null, 2));
+      const response = await api.put(`/map/layers/objects/${pipe.id}`, updateData);
+      console.log('Ответ сервера:', response.data);
 
       onUpdate();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Ошибка при обновлении трубы');
+      console.error('Ошибка при обновлении трубы:', err);
+      console.error('Детали ошибки:', err.response?.data);
+      setError(err.response?.data?.error || err.response?.data?.details || 'Ошибка при обновлении трубы');
     } finally {
       setLoading(false);
     }
@@ -100,6 +120,27 @@ const PipeEditModal = ({ pipe, onClose, onUpdate }) => {
               step="0.01"
               min="0"
             />
+          </div>
+
+          <div className="pipe-edit-modal__field">
+            <label htmlFor="pipe_material" className="pipe-edit-modal__label">
+              Материал трубы
+            </label>
+            <select
+              id="pipe_material"
+              name="pipe_material"
+              value={formData.pipe_material}
+              onChange={handleChange}
+              className="pipe-edit-modal__input"
+            >
+              <option value="">Выберите материал</option>
+              <option value="plastic">Пластик</option>
+              <option value="cast_iron">Чугун</option>
+              <option value="steel">Сталь</option>
+              <option value="asbestos_cement">Асбестоцемент</option>
+              <option value="concrete">Бетон</option>
+              <option value="other">Другое</option>
+            </select>
           </div>
 
           <div className="pipe-edit-modal__field">

@@ -44,6 +44,7 @@ const MapPage = () => {
     layerType: null,
     startWell: null,
   });
+  const [lineStartPoint, setLineStartPoint] = useState(null); // Начальная точка для построения линии
   const [hoveredLineId, setHoveredLineId] = useState(null);
   const defaultCity = getDefaultCity();
   const [center, setCenter] = useState(defaultCity.center);
@@ -331,15 +332,6 @@ const MapPage = () => {
       setApplications(loadedApplications);
       setHydrants(hydrantsResponse.data.hydrants || []);
       const loadedLayerObjects = layerObjectsResponse.data.objects || [];
-      console.log("Загружено features (слои):", loadedFeatures.length);
-      console.log("Загружено объектов слоев:", loadedLayerObjects.length);
-      console.log(
-        "Загружено гидрантов:",
-        hydrantsResponse.data.hydrants?.length || 0
-      );
-      console.log("Features:", loadedFeatures);
-      console.log("Объекты слоев:", loadedLayerObjects);
-      console.log("Гидранты:", hydrantsResponse.data.hydrants);
       setLayerObjects(loadedLayerObjects);
     } catch (error) {
       console.error("Error loading map data:", error);
@@ -603,23 +595,11 @@ const MapPage = () => {
 
     // Показываем слои только при зуме от 17 до 21 включительно
     const shouldShow = currentZoom >= 17 && currentZoom <= 21;
-    console.log(
-      "Слои - Текущий зум:",
-      currentZoom,
-      "Zoom из состояния:",
-      zoom,
-      "Показывать:",
-      shouldShow,
-      "mapFeatures.length:",
-      mapFeatures.length
-    );
 
     if (!shouldShow) {
-      console.log("Слои скрыты - зум вне диапазона");
       return [];
     }
 
-    console.log("Слои отображаются, mapFeatures:", mapFeatures);
     return mapFeatures;
   }, [zoom, mapFeatures]);
 
@@ -762,10 +742,32 @@ const MapPage = () => {
                   addMode.layerType &&
                   addMode.objectType
                 ) {
-                  setClickedPosition(position);
-                  setShowLayerObjectForm(true);
-                  // Запрещаем создание заявок в этом режиме
-                  return;
+                  // Если создаем линию - нужны две точки
+                  if (addMode.objectType === "line") {
+                    if (!lineStartPoint) {
+                      // Первая точка - сохраняем
+                      setLineStartPoint(position);
+                      alert(
+                        `Выбрана начальная точка. Выберите конечную точку для создания линии.`
+                      );
+                      return;
+                    } else {
+                      // Вторая точка - создаем линию между двумя точками
+                      setClickedPosition({
+                        startPoint: lineStartPoint,
+                        endPoint: position,
+                      });
+                      setShowLayerObjectForm(true);
+                      // Запрещаем создание заявок в этом режиме
+                      return;
+                    }
+                  } else {
+                    // Для колодца и камеры - одна точка
+                    setClickedPosition(position);
+                    setShowLayerObjectForm(true);
+                    // Запрещаем создание заявок в этом режиме
+                    return;
+                  }
                 }
 
                 // Обычный режим - создание заявки/гидранта
@@ -783,18 +785,6 @@ const MapPage = () => {
           {/* Отображение схем водопровода и канализации */}
           {/* Скрываем слои при зуме < 15 (масштаб > 200м) */}
           {/* Показываем слои при зуме >= 15 */}
-          {(() => {
-            console.log(
-              "Рендер слоев - visibleMapFeatures:",
-              visibleMapFeatures
-            );
-            console.log(
-              "Рендер слоев - isArray:",
-              Array.isArray(visibleMapFeatures)
-            );
-            console.log("Рендер слоев - length:", visibleMapFeatures?.length);
-            return null;
-          })()}
           {visibleMapFeatures &&
             Array.isArray(visibleMapFeatures) &&
             visibleMapFeatures.length > 0 &&
@@ -947,6 +937,20 @@ const MapPage = () => {
                   const getArrowPoints = () => {
                     if (coordinates.length < 2) return [];
 
+                    // Всегда используем первую и последнюю точку для определения направления
+                    const [startLat, startLng] = coordinates[0];
+                    const [endLat, endLng] =
+                      coordinates[coordinates.length - 1];
+
+                    // Вычисляем общее направление от первой точки к последней
+                    const dLat = endLat - startLat;
+                    const dLng = endLng - startLng;
+                    let angle = (Math.atan2(dLng, dLat) * 180) / Math.PI;
+                    // Преобразуем в угол от севера по часовой стрелке
+                    angle = 90 - angle;
+                    // Нормализуем угол в диапазон [0, 360)
+                    if (angle < 0) angle += 360;
+
                     const arrowPoints = [];
                     const numArrows = Math.max(
                       2,
@@ -1004,19 +1008,7 @@ const MapPage = () => {
                           const arrowLng =
                             lng1 + (lng2 - lng1) * segmentProgress;
 
-                          // Вычисляем угол направления (в градусах, по часовой стрелке от севера)
-                          const dLat = lat2 - lat1;
-                          const dLng = lng2 - lng1;
-                          // В Yandex Maps угол поворота иконки измеряется в градусах по часовой стрелке от севера
-                          // atan2(dLng, dLat) возвращает угол в радианах от направления "вправо" (восток) против часовой стрелки
-                          // Для преобразования в угол от севера по часовой стрелке используем: angle = 90 - atan2(dLng, dLat) * 180 / PI
-                          // Но нужно учесть, что для правильной ориентации стрелки нужно использовать atan2(dLng, dLat)
-                          let angle = (Math.atan2(dLng, dLat) * 180) / Math.PI;
-                          // Преобразуем в угол от севера по часовой стрелке
-                          angle = 90 - angle;
-                          // Нормализуем угол в диапазон [0, 360)
-                          if (angle < 0) angle += 360;
-
+                          // Все стрелки указывают в одном направлении - от первой точки к последней
                           arrowPoints.push({
                             lat: arrowLat,
                             lng: arrowLng,
@@ -1584,7 +1576,13 @@ const MapPage = () => {
 
       {/* Выдвижная панель справа с вкладками */}
       <SidePanel
-        onAddModeChange={setAddMode}
+        onAddModeChange={(newAddMode) => {
+          setAddMode(newAddMode);
+          // Сбрасываем начальную точку линии при изменении режима
+          if (!newAddMode.isActive || newAddMode.objectType !== "line") {
+            setLineStartPoint(null);
+          }
+        }}
         addMode={addMode}
         onLayerVisibilityChange={setLayerVisibility}
         layerVisibility={layerVisibility}
@@ -1613,12 +1611,14 @@ const MapPage = () => {
             setShowLayerObjectForm(false);
             setClickedPosition(null);
             setClickedAddress(null);
+            setLineStartPoint(null); // Сбрасываем начальную точку линии
           }}
           onSubmit={async () => {
             await loadMapData();
             setShowLayerObjectForm(false);
             setClickedPosition(null);
             setClickedAddress(null);
+            setLineStartPoint(null); // Сбрасываем начальную точку линии
             setAddMode({ layerType: null, objectType: null, isActive: false });
           }}
         />
