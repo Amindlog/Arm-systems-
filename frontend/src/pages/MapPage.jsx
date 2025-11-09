@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   YMaps,
   Map as YandexMap,
@@ -46,6 +46,8 @@ const MapPage = () => {
   });
   const [lineStartPoint, setLineStartPoint] = useState(null); // Начальная точка для построения линии
   const [hoveredLineId, setHoveredLineId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // Состояние для диалога подтверждения удаления
+  const deleteConfirmResolveRef = useRef(null); // Ref для хранения resolve функции Promise
   const defaultCity = getDefaultCity();
   const [center, setCenter] = useState(defaultCity.center);
   const [zoom, setZoom] = useState(defaultCity.zoom);
@@ -215,11 +217,21 @@ const MapPage = () => {
   // Обработчик удаления объекта слоя (колодца, камеры, линии)
   useEffect(() => {
     const handleDeleteLayerObject = async (event) => {
+      console.log("Событие удаления получено:", event);
+      console.log("event.detail:", event.detail);
+      console.log("event.detail?.objectId:", event.detail?.objectId);
+      
       if (event.detail && event.detail.objectId) {
-        const objectId = event.detail.objectId;
-        const object = layerObjects.find((obj) => obj.id === objectId);
+        // Преобразуем objectId в число для корректного сравнения
+        const objectId = parseInt(event.detail.objectId, 10);
+        console.log("Ищем объект с ID:", objectId, "тип:", typeof objectId);
+        console.log("Все объекты:", layerObjects.map(obj => ({ id: obj.id, idType: typeof obj.id, type: obj.object_type })));
+        
+        // Используем строгое сравнение с преобразованием типов
+        const object = layerObjects.find((obj) => Number(obj.id) === Number(objectId));
 
         if (!object) {
+          console.error("Объект не найден в layerObjects:", objectId);
           alert("Объект не найден");
           return;
         }
@@ -233,9 +245,19 @@ const MapPage = () => {
             ? "Линия"
             : "Объект";
 
-        if (
-          !confirm(`Вы уверены, что хотите удалить ${objectName} #${objectId}?`)
-        ) {
+        console.log("Показываем диалог подтверждения для:", objectName, "#", objectId);
+        
+        // Показываем модальное окно подтверждения
+        const confirmed = await new Promise((resolve) => {
+          deleteConfirmResolveRef.current = resolve;
+          setDeleteConfirm({
+            objectId,
+            objectName,
+          });
+        });
+        
+        if (!confirmed) {
+          console.log("Пользователь отменил удаление");
           return;
         }
 
@@ -343,7 +365,7 @@ const MapPage = () => {
 
   const handleMapClick = (e) => {
     const user = authService.getUser();
-    if (user && (user.role === "dispatcher" || user.role === "director")) {
+    if (user && user.role === "director") {
       try {
         const coords = e.get ? e.get("coords") : e.originalEvent.coords;
         setClickedPosition({
@@ -896,9 +918,7 @@ const MapPage = () => {
                   const calculatedLength = calculateLength();
                   const displayLength = obj.pipe_length || calculatedLength;
                   const user = authService.getUser();
-                  const canEdit =
-                    user &&
-                    (user.role === "dispatcher" || user.role === "director");
+                  const canEdit = user && user.role === "director";
 
                   // Вычисляем середину линии для создания заявки
                   const getLineCenter = () => {
@@ -1032,7 +1052,7 @@ const MapPage = () => {
                       : "/images/icons/arrow-sewer.svg";
 
                   return (
-                    <>
+                    <React.Fragment key={`line-fragment-${obj.id}`}>
                       <Polyline
                         key={`layer-line-${obj.id}`}
                         geometry={coordinates}
@@ -1095,7 +1115,12 @@ const MapPage = () => {
                                       }
                                       ${
                                         canEdit
-                                          ? `<button onclick="window.dispatchEvent(new CustomEvent('editPipe', {detail: {pipeId: ${obj.id}}}))" style="margin-top: 8px; padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Редактировать</button>`
+                                          ? `<button onclick="window.dispatchEvent(new CustomEvent('editPipe', {detail: {pipeId: ${obj.id}}}))" style="margin-top: 8px; padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">Редактировать</button>`
+                                          : ""
+                                      }
+                                      ${
+                                        canEdit
+                                          ? `<button onclick="window.dispatchEvent(new CustomEvent('deleteLayerObject', {detail: {objectId: ${obj.id}}}))" style="margin-top: 8px; padding: 6px 12px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Удалить</button>`
                                           : ""
                                       }
                                     </p>
@@ -1128,7 +1153,7 @@ const MapPage = () => {
                           }}
                         />
                       ))}
-                    </>
+                    </React.Fragment>
                   );
                 }
               } else if (
@@ -1654,6 +1679,100 @@ const MapPage = () => {
             await loadMapData();
           }}
         />
+      )}
+
+      {/* Модальное окно подтверждения удаления */}
+      {deleteConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              if (deleteConfirmResolveRef.current) {
+                deleteConfirmResolveRef.current(false);
+                deleteConfirmResolveRef.current = null;
+              }
+              setDeleteConfirm(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "24px",
+              borderRadius: "8px",
+              maxWidth: "400px",
+              width: "90%",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "18px" }}>
+              Подтверждение удаления
+            </h3>
+            <p style={{ margin: "0 0 24px 0", fontSize: "14px" }}>
+              Вы уверены, что хотите удалить {deleteConfirm.objectName} #
+              {deleteConfirm.objectId}?
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={() => {
+                  if (deleteConfirmResolveRef.current) {
+                    deleteConfirmResolveRef.current(false);
+                    deleteConfirmResolveRef.current = null;
+                  }
+                  setDeleteConfirm(null);
+                }}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => {
+                  if (deleteConfirmResolveRef.current) {
+                    deleteConfirmResolveRef.current(true);
+                    deleteConfirmResolveRef.current = null;
+                  }
+                  setDeleteConfirm(null);
+                }}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#dc2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                }}
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

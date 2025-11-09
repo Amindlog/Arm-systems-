@@ -644,7 +644,7 @@ router.get('/layers/objects', authenticateToken, async (req, res) => {
 // Создать объект слоя
 router.post('/layers/objects', authenticateToken, async (req, res) => {
   try {
-    const { layer_type, object_type, geojson, address, description, pipe_size, pipe_length, pipe_material } = req.body;
+    const { layer_type, object_type, geojson, address, description, pipe_size, pipe_length, pipe_material, balance_delimitation } = req.body;
 
     if (!layer_type || !object_type || !geojson) {
       return res.status(400).json({ error: 'Тип слоя, тип объекта и геоданные обязательны' });
@@ -692,7 +692,11 @@ router.post('/layers/objects', authenticateToken, async (req, res) => {
     if (hasPipeLength) {
       insertFields += ', pipe_length';
       insertValues += `, $${paramCount++}`;
-      insertParams.push(pipe_length || null);
+      // Преобразуем pipe_length в число или null
+      const pipeLengthValue = pipe_length !== undefined && pipe_length !== null && pipe_length !== '' 
+        ? (typeof pipe_length === 'number' ? pipe_length : parseFloat(pipe_length)) 
+        : null;
+      insertParams.push(isNaN(pipeLengthValue) ? null : pipeLengthValue);
     }
 
     if (hasBalanceDelimitation) {
@@ -745,8 +749,16 @@ router.post('/layers/objects', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Create layer object error:', error);
-    res.status(500).json({ error: 'Ошибка при создании объекта слоя' });
+    console.error('========================================');
+    console.error('ОШИБКА при создании объекта слоя:', error);
+    console.error('Детали ошибки:', error.message);
+    console.error('Stack trace:', error.stack);
+    console.error('req.body:', req.body);
+    console.error('========================================');
+    res.status(500).json({ 
+      error: 'Ошибка при создании объекта слоя', 
+      details: error.message 
+    });
   }
 });
 
