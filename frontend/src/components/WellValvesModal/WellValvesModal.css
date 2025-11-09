@@ -1,0 +1,273 @@
+.well-valves-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.well-valves-modal {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.well-valves-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.well-valves-modal__title {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.well-valves-modal__close {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.well-valves-modal__close:hover {
+  background-color: #f0f0f0;
+}
+
+.well-valves-modal__info {
+  padding: 12px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #666;
+}
+
+.well-valves-modal__info p {
+  margin: 4px 0;
+}
+
+.well-valves-modal__error {
+  background-color: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #fcc;
+}
+
+.well-valves-modal__actions {
+  margin-bottom: 16px;
+}
+
+.well-valves-modal__button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.well-valves-modal__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.well-valves-modal__button--add {
+  background-color: #0066cc;
+  color: white;
+}
+
+.well-valves-modal__button--add:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.well-valves-modal__button--edit {
+  background-color: #f0f0f0;
+  color: #333;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.well-valves-modal__button--edit:hover {
+  background-color: #e0e0e0;
+}
+
+.well-valves-modal__button--delete {
+  background-color: #dc2626;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.well-valves-modal__button--delete:hover {
+  background-color: #b91c1c;
+}
+
+.well-valves-modal__button--cancel {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.well-valves-modal__button--cancel:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.well-valves-modal__button--submit {
+  background-color: #0066cc;
+  color: white;
+}
+
+.well-valves-modal__button--submit:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.well-valves-modal__form {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.well-valves-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.well-valves-modal__label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.well-valves-modal__required {
+  color: #dc2626;
+}
+
+.well-valves-modal__input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.well-valves-modal__input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.well-valves-modal__textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.well-valves-modal__form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.well-valves-modal__loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.well-valves-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.well-valves-modal__empty {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-style: italic;
+}
+
+.well-valves-modal__item {
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.well-valves-modal__item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.well-valves-modal__item-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.well-valves-modal__status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.well-valves-modal__status--working {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.well-valves-modal__status--not_working {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.well-valves-modal__status--needs_repair {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.well-valves-modal__item-description {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.well-valves-modal__item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+

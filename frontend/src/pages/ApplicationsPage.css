@@ -1,0 +1,209 @@
+.applications-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.applications-page__header {
+  margin-bottom: 24px;
+}
+
+.applications-page__title {
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.applications-page__error {
+  background: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.applications-page__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 200px);
+  font-size: 18px;
+  color: #666;
+}
+
+.applications-page__filters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.applications-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.applications-page__filter-label {
+  font-weight: 500;
+  color: #555;
+  font-size: 14px;
+}
+
+.applications-page__filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.applications-page__filter-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.applications-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.applications-page__empty {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 16px;
+}
+
+.applications-page__item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s;
+}
+
+.applications-page__item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Цветовая индикация для заявок без бригады (красный) */
+.applications-page__item--no-team {
+  border-left-color: #dc2626;
+}
+
+/* Цветовая индикация для водосети (синий) */
+.applications-page__item--water {
+  border-left-color: #0066cc;
+}
+
+/* Цветовая индикация для канализации (желтый) */
+.applications-page__item--sewer {
+  border-left-color: #fbbf24;
+}
+
+/* Яркие цвета для заявок "в работе" */
+.applications-page__item--water.applications-page__item--in-progress {
+  border-left-color: #0066ff;
+}
+
+.applications-page__item--sewer.applications-page__item--in-progress {
+  border-left-color: #facc15;
+}
+
+.applications-page__item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.applications-page__item-title {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.applications-page__status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.applications-page__status--new {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.applications-page__status--in-progress {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.applications-page__status--completed {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.applications-page__status--cancelled {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.applications-page__item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.applications-page__item-field {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.applications-page__item-field strong {
+  color: #333;
+  margin-right: 8px;
+}
+
+.applications-page__item-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.applications-page__action-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.applications-page__status-select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.applications-page__status-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+

@@ -1,0 +1,7 @@
+<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+  <!-- Красный квадрат -->
+  <rect width="40" height="40" fill="#dc2626" rx="4" stroke="#ffffff" stroke-width="2"/>
+  <!-- Буквы ПГ -->
+  <text x="20" y="28" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">ПГ</text>
+</svg>
+

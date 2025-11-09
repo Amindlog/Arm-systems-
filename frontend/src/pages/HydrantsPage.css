@@ -1,0 +1,314 @@
+.hydrants-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.hydrants-page__header {
+  margin-bottom: 24px;
+}
+
+.hydrants-page__header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.hydrants-page__title {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.hydrants-page__add-button {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.hydrants-page__add-button:hover {
+  background: #5568d3;
+}
+
+.hydrants-page__error {
+  background: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.hydrants-page__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 200px);
+  font-size: 18px;
+  color: #666;
+}
+
+.hydrants-page__form-container {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.hydrants-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hydrants-page__form-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.hydrants-page__form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hydrants-page__form-label {
+  font-weight: 500;
+  color: #555;
+  font-size: 14px;
+}
+
+.hydrants-page__required {
+  color: #c33;
+}
+
+.hydrants-page__form-input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+  font-family: inherit;
+}
+
+.hydrants-page__form-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.hydrants-page__form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.hydrants-page__form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.hydrants-page__button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.hydrants-page__button--cancel {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.hydrants-page__button--cancel:hover {
+  background: #e0e0e0;
+}
+
+.hydrants-page__button--submit {
+  background: #667eea;
+  color: white;
+}
+
+.hydrants-page__button--submit:hover {
+  background: #5568d3;
+}
+
+.hydrants-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hydrants-page__empty {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 16px;
+}
+
+.hydrants-page__item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #dc2626;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s;
+}
+
+.hydrants-page__item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.hydrants-page__item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.hydrants-page__item-title {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.hydrants-page__item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hydrants-page__action-button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.hydrants-page__action-button--edit {
+  background: #667eea;
+  color: white;
+}
+
+.hydrants-page__action-button--edit:hover {
+  background: #5568d3;
+}
+
+.hydrants-page__action-button--delete {
+  background: #dc2626;
+  color: white;
+}
+
+.hydrants-page__action-button--delete:hover {
+  background: #b91c1c;
+}
+
+.hydrants-page__item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hydrants-page__item-field {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.hydrants-page__item-field strong {
+  color: #333;
+  margin-right: 8px;
+}
+
+.hydrants-page__status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.hydrants-page__status--working {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.hydrants-page__status--not_working {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.hydrants-page__status--needs_repair {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.hydrants-page__photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.hydrants-page__photo-item {
+  position: relative;
+}
+
+.hydrants-page__photo-thumb {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.hydrants-page__photo-thumb:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.hydrants-page__status-select {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+  border: 1px solid #ddd;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hydrants-page__status-select:hover {
+  border-color: #667eea;
+}
+
+.hydrants-page__status-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+

@@ -1,0 +1,160 @@
+.application-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.application-form {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.application-form__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.application-form__title {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.application-form__close {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.3s;
+}
+
+.application-form__close:hover {
+  color: #333;
+}
+
+.application-form__error {
+  background: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.application-form__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.application-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.application-form__label {
+  font-weight: 500;
+  color: #555;
+  font-size: 14px;
+}
+
+.application-form__required {
+  color: #c33;
+}
+
+.application-form__input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  font-family: inherit;
+}
+
+.application-form__input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.application-form__textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.application-form__info {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #666;
+}
+
+.application-form__info p {
+  margin: 4px 0;
+}
+
+.application-form__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.application-form__button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.application-form__button--cancel {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.application-form__button--cancel:hover {
+  background: #e0e0e0;
+}
+
+.application-form__button--submit {
+  background: #667eea;
+  color: white;
+}
+
+.application-form__button--submit:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.application-form__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
