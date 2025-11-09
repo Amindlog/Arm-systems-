@@ -84,7 +84,7 @@
   border: 1px solid #e0e0e0;
   border-left: 4px solid #e0e0e0;
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: box-shadow 0.3s;
 }
@@ -93,43 +93,51 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Цветовая индикация для заявок без бригады (красный) */
+/* Цветовая индикация в зависимости от бригады */
 .applications-page__item--no-team {
-  border-left-color: #dc2626;
+  border-left-color: #dc2626; /* Красный для заявок без бригады */
 }
 
-/* Цветовая индикация для водосети (синий) */
 .applications-page__item--water {
-  border-left-color: #0066cc;
+  border-left-color: #0066cc; /* Синий для водосети */
 }
 
-/* Цветовая индикация для канализации (желтый) */
 .applications-page__item--sewer {
-  border-left-color: #fbbf24;
-}
-
-/* Яркие цвета для заявок "в работе" */
-.applications-page__item--water.applications-page__item--in-progress {
-  border-left-color: #0066ff;
-}
-
-.applications-page__item--sewer.applications-page__item--in-progress {
-  border-left-color: #facc15;
+  border-left-color: #8b4513; /* Коричневый для канализации */
 }
 
 .applications-page__item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  gap: 12px;
+}
+
+.applications-page__arrow {
+  display: inline-block;
+  font-size: 12px;
+  color: #666;
+  transition: transform 0.3s ease;
+  user-select: none;
+}
+
+.applications-page__arrow--expanded {
+  transform: rotate(90deg);
 }
 
 .applications-page__item-title {
   margin: 0;
   font-size: 18px;
   color: #333;
+  font-weight: 600;
+}
+
+.applications-page__item-subtitle {
+  font-size: 13px;
+  color: #666;
+  font-weight: 400;
 }
 
 .applications-page__status {
@@ -164,6 +172,19 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
 }
 
 .applications-page__item-field {
@@ -199,11 +220,123 @@
   font-size: 14px;
   background: white;
   cursor: pointer;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s, color 0.3s;
 }
 
 .applications-page__status-select:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.applications-page__status-select--header {
+  font-size: 12px;
+  padding: 4px 8px;
+  min-width: 120px;
+}
+
+/* Подсветка селекта статуса в зависимости от статуса */
+.applications-page__status-select--header.applications-page__status-select--new,
+select.applications-page__status-select--header.applications-page__status-select--new {
+  border-color: #1976d2 !important;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+}
+
+.applications-page__status-select--header.applications-page__status-select--in-progress,
+select.applications-page__status-select--header.applications-page__status-select--in-progress {
+  border-color: #f57c00 !important;
+  background-color: #fff3e0 !important;
+  color: #f57c00 !important;
+}
+
+.applications-page__status-select--header.applications-page__status-select--completed,
+select.applications-page__status-select--header.applications-page__status-select--completed {
+  border-color: #388e3c !important;
+  background-color: #e8f5e9 !important;
+  color: #388e3c !important;
+}
+
+.applications-page__status-select--header.applications-page__status-select--cancelled,
+select.applications-page__status-select--header.applications-page__status-select--cancelled {
+  border-color: #d32f2f !important;
+  background-color: #ffebee !important;
+  color: #d32f2f !important;
+}
+
+.applications-page__icon-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.applications-page__icon-button:hover:not(:disabled) {
+  background-color: #f0f0f0;
+  transform: scale(1.1);
+}
+
+.applications-page__icon-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.applications-page__icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.applications-page__icon-button--edit:hover:not(:disabled) {
+  background-color: #e3f2fd;
+}
+
+.applications-page__icon-button--delete:hover:not(:disabled) {
+  background-color: #ffebee;
+}
+
+.applications-page__action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.applications-page__button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.applications-page__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.applications-page__button--edit {
+  background: #667eea;
+  color: white;
+}
+
+.applications-page__button--edit:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.applications-page__button--delete {
+  background: #dc2626;
+  color: white;
+}
+
+.applications-page__button--delete:hover:not(:disabled) {
+  background: #b91c1c;
 }
 

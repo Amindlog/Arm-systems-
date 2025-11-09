@@ -525,7 +525,33 @@ router.get('/layers/objects', authenticateToken, async (req, res) => {
   try {
     const { layer_type, object_type } = req.query;
 
-    let query = 'SELECT id, layer_type, object_type, geojson, address, description, pipe_size, created_at, updated_at FROM layer_objects';
+    // Проверяем наличие поля pipe_length в таблице
+    let query = 'SELECT id, layer_type, object_type, geojson, address, description, pipe_size';
+    try {
+      // Пробуем выбрать pipe_length, если поле существует
+      const testQuery = await pool.query('SELECT pipe_length FROM layer_objects LIMIT 1');
+      query += ', pipe_length';
+    } catch (e) {
+      // Поле не существует, не добавляем его в запрос
+      console.log('Поле pipe_length не найдено в таблице layer_objects');
+    }
+    try {
+      // Пробуем выбрать balance_delimitation, если поле существует
+      const testQuery = await pool.query('SELECT balance_delimitation FROM layer_objects LIMIT 1');
+      query += ', balance_delimitation';
+    } catch (e) {
+      // Поле не существует, не добавляем его в запрос
+      console.log('Поле balance_delimitation не найдено в таблице layer_objects');
+    }
+    try {
+      // Пробуем выбрать pipe_material, если поле существует
+      const testQuery = await pool.query('SELECT pipe_material FROM layer_objects LIMIT 1');
+      query += ', pipe_material';
+    } catch (e) {
+      // Поле не существует, не добавляем его в запрос
+      console.log('Поле pipe_material не найдено в таблице layer_objects');
+    }
+    query += ', created_at, updated_at FROM layer_objects';
     const params = [];
     const conditions = [];
     let paramCount = 1;
@@ -548,17 +574,40 @@ router.get('/layers/objects', authenticateToken, async (req, res) => {
 
     const result = await pool.query(query, params);
 
-    const objects = result.rows.map(row => ({
-      id: row.id,
-      layer_type: row.layer_type,
-      object_type: row.object_type,
-      geojson: row.geojson,
-      address: row.address || null,
-      description: row.description || null,
-      pipe_size: row.pipe_size || null,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }));
+    const objects = result.rows.map(row => {
+      const obj = {
+        id: row.id,
+        layer_type: row.layer_type,
+        object_type: row.object_type,
+        geojson: row.geojson,
+        address: row.address || null,
+        description: row.description || null,
+        pipe_size: row.pipe_size || null,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      };
+      
+      // Добавляем pipe_length только если поле существует
+      if (row.hasOwnProperty('pipe_length')) {
+        obj.pipe_length = row.pipe_length ? parseFloat(row.pipe_length) : null;
+      }
+      
+      // Добавляем balance_delimitation только если поле существует
+      if (row.hasOwnProperty('balance_delimitation')) {
+        obj.balance_delimitation = row.balance_delimitation || null;
+      } else {
+        obj.balance_delimitation = null;
+      }
+      
+      // Добавляем pipe_material только если поле существует
+      if (row.hasOwnProperty('pipe_material')) {
+        obj.pipe_material = row.pipe_material || null;
+      } else {
+        obj.pipe_material = null;
+      }
+      
+      return obj;
+    });
 
     // Для колодцев загружаем задвижки
     for (const obj of objects) {
@@ -595,7 +644,7 @@ router.get('/layers/objects', authenticateToken, async (req, res) => {
 // Создать объект слоя
 router.post('/layers/objects', authenticateToken, async (req, res) => {
   try {
-    const { layer_type, object_type, geojson, address, description, pipe_size } = req.body;
+    const { layer_type, object_type, geojson, address, description, pipe_size, pipe_length, pipe_material } = req.body;
 
     if (!layer_type || !object_type || !geojson) {
       return res.status(400).json({ error: 'Тип слоя, тип объекта и геоданные обязательны' });
@@ -618,11 +667,63 @@ router.post('/layers/objects', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Некорректный формат GeoJSON' });
     }
 
+    // Проверяем наличие полей pipe_length, balance_delimitation и pipe_material
+    let hasPipeLength = false;
+    let hasBalanceDelimitation = false;
+    let hasPipeMaterial = false;
+    try {
+      const testResult = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'layer_objects' AND column_name IN ('pipe_length', 'balance_delimitation', 'pipe_material')
+      `);
+      hasPipeLength = testResult.rows.some(r => r.column_name === 'pipe_length');
+      hasBalanceDelimitation = testResult.rows.some(r => r.column_name === 'balance_delimitation');
+      hasPipeMaterial = testResult.rows.some(r => r.column_name === 'pipe_material');
+    } catch (e) {
+      console.log('Ошибка при проверке полей:', e.message);
+    }
+
+    let insertFields = 'layer_type, object_type, geojson, address, description, pipe_size';
+    let insertValues = '$1, $2, $3, $4, $5, $6';
+    let insertParams = [layer_type, object_type, JSON.stringify(geojson), address || null, description || null, pipe_size || null];
+    let paramCount = 7;
+
+    if (hasPipeLength) {
+      insertFields += ', pipe_length';
+      insertValues += `, $${paramCount++}`;
+      insertParams.push(pipe_length || null);
+    }
+
+    if (hasBalanceDelimitation) {
+      insertFields += ', balance_delimitation';
+      insertValues += `, $${paramCount++}`;
+      insertParams.push(balance_delimitation || null);
+    }
+
+    if (hasPipeMaterial) {
+      insertFields += ', pipe_material';
+      insertValues += `, $${paramCount++}`;
+      insertParams.push(pipe_material || null);
+    }
+
+    let returningFields = 'id, layer_type, object_type, geojson, address, description, pipe_size';
+    if (hasPipeLength) {
+      returningFields += ', pipe_length';
+    }
+    if (hasBalanceDelimitation) {
+      returningFields += ', balance_delimitation';
+    }
+    if (hasPipeMaterial) {
+      returningFields += ', pipe_material';
+    }
+    returningFields += ', created_at, updated_at';
+
     const result = await pool.query(`
-      INSERT INTO layer_objects (layer_type, object_type, geojson, address, description, pipe_size)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, layer_type, object_type, geojson, address, description, pipe_size, created_at, updated_at
-    `, [layer_type, object_type, JSON.stringify(geojson), address || null, description || null, pipe_size || null]);
+      INSERT INTO layer_objects (${insertFields})
+      VALUES (${insertValues})
+      RETURNING ${returningFields}
+    `, insertParams);
 
     const object = result.rows[0];
 
@@ -636,6 +737,9 @@ router.post('/layers/objects', authenticateToken, async (req, res) => {
         address: object.address,
         description: object.description,
         pipe_size: object.pipe_size,
+        pipe_length: object.pipe_length ? parseFloat(object.pipe_length) : null,
+        balance_delimitation: object.balance_delimitation || null,
+        pipe_material: object.pipe_material || null,
         created_at: object.created_at,
         updated_at: object.updated_at
       }
@@ -650,7 +754,7 @@ router.post('/layers/objects', authenticateToken, async (req, res) => {
 router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { layer_type, object_type, geojson, address, description, pipe_size } = req.body;
+    const { layer_type, object_type, geojson, address, description, pipe_size, pipe_length, pipe_material } = req.body;
 
     // Проверка существования объекта
     const existingObject = await pool.query('SELECT * FROM layer_objects WHERE id = $1', [id]);
@@ -708,6 +812,16 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
       params.push(pipe_size);
     }
 
+    if (pipe_length !== undefined) {
+      updates.push(`pipe_length = $${paramCount++}`);
+      params.push(pipe_length);
+    }
+
+    if (pipe_material !== undefined) {
+      updates.push(`pipe_material = $${paramCount++}`);
+      params.push(pipe_material);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: 'Нет полей для обновления' });
     }
@@ -715,11 +829,33 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
     updates.push(`updated_at = CURRENT_TIMESTAMP`);
     params.push(id);
 
+    // Проверяем наличие полей для RETURNING
+    let returningFields = 'id, layer_type, object_type, geojson, address, description, pipe_size';
+    try {
+      const testResult = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'layer_objects' AND column_name IN ('pipe_length', 'balance_delimitation', 'pipe_material')
+      `);
+      if (testResult.rows.some(r => r.column_name === 'pipe_length')) {
+        returningFields += ', pipe_length';
+      }
+      if (testResult.rows.some(r => r.column_name === 'balance_delimitation')) {
+        returningFields += ', balance_delimitation';
+      }
+      if (testResult.rows.some(r => r.column_name === 'pipe_material')) {
+        returningFields += ', pipe_material';
+      }
+    } catch (e) {
+      console.log('Ошибка при проверке полей для RETURNING:', e.message);
+    }
+    returningFields += ', created_at, updated_at';
+
     const result = await pool.query(`
       UPDATE layer_objects 
       SET ${updates.join(', ')}
       WHERE id = $${paramCount}
-      RETURNING id, layer_type, object_type, geojson, address, description, pipe_size, created_at, updated_at
+      RETURNING ${returningFields}
     `, params);
 
     res.json({
@@ -732,6 +868,9 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
         address: result.rows[0].address,
         description: result.rows[0].description,
         pipe_size: result.rows[0].pipe_size,
+        pipe_length: result.rows[0].pipe_length ? parseFloat(result.rows[0].pipe_length) : null,
+        balance_delimitation: result.rows[0].balance_delimitation || null,
+        pipe_material: result.rows[0].pipe_material || null,
         created_at: result.rows[0].created_at,
         updated_at: result.rows[0].updated_at
       }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './MapToolsPanel.css';
 
-const MapToolsPanel = ({ onAddModeChange, activeMode }) => {
+const MapToolsPanel = ({ onAddModeChange, activeMode, onLineBuildingModeChange, lineBuildingMode }) => {
   const [layerType, setLayerType] = useState('water');
   const [objectType, setObjectType] = useState('well');
   const [isAdding, setIsAdding] = useState(false);
@@ -92,6 +92,44 @@ const MapToolsPanel = ({ onAddModeChange, activeMode }) => {
               <div className="map-tools-panel__active-indicator">
                 Режим добавления активен
               </div>
+            </>
+          )}
+        </div>
+
+        <div className="map-tools-panel__field" style={{ marginTop: '16px', borderTop: '1px solid #ddd', paddingTop: '16px' }}>
+          <label className="map-tools-panel__label">
+            Построение трубы между колодцами
+          </label>
+          {!lineBuildingMode?.isActive ? (
+            <button
+              onClick={() => {
+                if (onLineBuildingModeChange) {
+                  onLineBuildingModeChange({ isActive: true, layerType: layerType, startWell: null });
+                }
+              }}
+              className="map-tools-panel__button map-tools-panel__button--add"
+              style={{ width: '100%', marginTop: '8px' }}
+            >
+              Построить трубу
+            </button>
+          ) : (
+            <>
+              <div className="map-tools-panel__active-indicator" style={{ marginTop: '8px' }}>
+                {lineBuildingMode.startWell 
+                  ? `Выбран колодец #${lineBuildingMode.startWell.id}. Выберите второй колодец.`
+                  : 'Выберите первый колодец для построения трубы.'}
+              </div>
+              <button
+                onClick={() => {
+                  if (onLineBuildingModeChange) {
+                    onLineBuildingModeChange({ isActive: false, layerType: null, startWell: null });
+                  }
+                }}
+                className="map-tools-panel__button map-tools-panel__button--cancel"
+                style={{ width: '100%', marginTop: '8px' }}
+              >
+                Отмена
+              </button>
             </>
           )}
         </div>

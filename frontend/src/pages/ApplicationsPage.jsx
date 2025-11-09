@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { authService } from '../services/auth';
+import ApplicationEditModal from '../components/ApplicationEditModal/ApplicationEditModal';
 import './ApplicationsPage.css';
 
 const ApplicationsPage = () => {
@@ -12,6 +13,9 @@ const ApplicationsPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expandedApplications, setExpandedApplications] = useState(new Set());
+  const [editingApplication, setEditingApplication] = useState(null);
+  const [deletingApplicationId, setDeletingApplicationId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -57,6 +61,36 @@ const ApplicationsPage = () => {
     }
   };
 
+  const handleEdit = (application) => {
+    setEditingApplication(application);
+  };
+
+  const handleEditClose = () => {
+    setEditingApplication(null);
+  };
+
+  const handleEditSubmit = async () => {
+    await loadData();
+    setEditingApplication(null);
+  };
+
+  const handleDelete = async (applicationId) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту заявку?')) {
+      return;
+    }
+
+    try {
+      setDeletingApplicationId(applicationId);
+      await api.delete(`/applications/${applicationId}`);
+      await loadData();
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Ошибка при удалении заявки');
+    } finally {
+      setDeletingApplicationId(null);
+    }
+  };
+
   const getStatusName = (status) => {
     const statuses = {
       new: 'Новая',
@@ -77,27 +111,42 @@ const ApplicationsPage = () => {
     return classes[status] || '';
   };
 
-  const getTeamClass = (teamName, status) => {
-    // Если заявка новая и бригада не выбрана - красный цвет
-    if (status === 'new' && !teamName) {
+  const getTeamBorderClass = (teamName) => {
+    // Цвет левой полосы зависит от бригады
+    if (!teamName) {
       return 'applications-page__item--no-team';
     }
     
-    if (!teamName) return '';
-    const baseClass = teamName === 'водосеть' 
-      ? 'applications-page__item--water' 
-      : 'applications-page__item--sewer';
+    const normalizedName = teamName.toLowerCase().trim();
     
-    // Добавляем класс для статуса "в работе"
-    if (status === 'in_progress') {
-      return `${baseClass} applications-page__item--in-progress`;
+    if (normalizedName === 'водосеть') {
+      return 'applications-page__item--water';
+    } else if (normalizedName === 'канализация') {
+      return 'applications-page__item--sewer';
     }
     
-    return baseClass;
+    return 'applications-page__item--no-team';
+  };
+
+  const toggleApplication = (applicationId) => {
+    setExpandedApplications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(applicationId)) {
+        newSet.delete(applicationId);
+      } else {
+        newSet.add(applicationId);
+      }
+      return newSet;
+    });
+  };
+
+  const isExpanded = (applicationId) => {
+    return expandedApplications.has(applicationId);
   };
 
   const user = authService.getUser();
   const canEdit = user && (user.role === 'director' || user.role === 'dispatcher');
+  const canDelete = user && user.role === 'director';
 
   if (loading) {
     return <div className="applications-page__loading">Загрузка заявок...</div>;
@@ -155,85 +204,155 @@ const ApplicationsPage = () => {
         {applications.length === 0 ? (
           <div className="applications-page__empty">Заявки не найдены</div>
         ) : (
-          applications.map((app) => (
-            <div 
-              key={app.id} 
-              className={`applications-page__item ${getTeamClass(app.team?.name, app.status)}`}
-            >
-              <div className="applications-page__item-header">
-                <h3 className="applications-page__item-title">
-                  Заявка #{app.id}
-                </h3>
-                <span className={`applications-page__status ${getStatusClass(app.status)}`}>
-                  {getStatusName(app.status)}
-                </span>
+          applications.map((app) => {
+            const expanded = isExpanded(app.id);
+            return (
+              <div 
+                key={app.id} 
+                className={`applications-page__item ${getTeamBorderClass(app.team?.name)}`}
+              >
+                <div className="applications-page__item-header">
+                  <div 
+                    onClick={() => toggleApplication(app.id)}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}
+                  >
+                    <span className={`applications-page__arrow ${expanded ? 'applications-page__arrow--expanded' : ''}`}>
+                      ▶
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                      <h3 className="applications-page__item-title">
+                        {new Date(app.created_at).toLocaleString('ru-RU', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </h3>
+                      {app.address && (
+                        <span className="applications-page__item-subtitle">
+                          {app.address}
+                        </span>
+                      )}
+                      {app.submitted_by && (
+                        <span className="applications-page__item-subtitle">
+                          Подал: {app.submitted_by}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {canEdit && (
+                      <select
+                        value={app.status}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(app.id, e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`applications-page__status-select applications-page__status-select--header applications-page__status-select--${app.status === 'in_progress' ? 'in-progress' : app.status}`}
+                      >
+                        <option value="new">Новая</option>
+                        <option value="in_progress">В работе</option>
+                        <option value="completed">Выполнена</option>
+                        <option value="cancelled">Отменена</option>
+                      </select>
+                    )}
+                    {!canEdit && (
+                      <span className={`applications-page__status ${getStatusClass(app.status)}`}>
+                        {getStatusName(app.status)}
+                      </span>
+                    )}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(app);
+                        }}
+                        className="applications-page__icon-button applications-page__icon-button--edit"
+                        title="Редактировать"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(app.id);
+                        }}
+                        disabled={deletingApplicationId === app.id}
+                        className="applications-page__icon-button applications-page__icon-button--delete"
+                        title="Удалить"
+                      >
+                        {deletingApplicationId === app.id ? '⏳' : '🗑️'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {expanded && (
+                  <div className="applications-page__item-content" style={{ marginTop: '12px' }}>
+                    <div className="applications-page__item-field">
+                      <strong>Дата получения:</strong> {new Date(app.created_at).toLocaleString('ru-RU', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+
+                    <div className="applications-page__item-field">
+                      <strong>Адрес:</strong> {app.address}
+                    </div>
+
+                    {app.description && (
+                      <div className="applications-page__item-field">
+                        <strong>Описание:</strong> {app.description}
+                      </div>
+                    )}
+
+                    {app.submitted_by && (
+                      <div className="applications-page__item-field">
+                        <strong>Подал:</strong> {app.submitted_by}
+                      </div>
+                    )}
+
+                    {app.accepted_by && (
+                      <div className="applications-page__item-field">
+                        <strong>Принял:</strong> {app.accepted_by.name}
+                      </div>
+                    )}
+
+                    {app.team && (
+                      <div className="applications-page__item-field">
+                        <strong>Бригада:</strong> {app.team.name}
+                      </div>
+                    )}
+
+                    <div className="applications-page__item-field">
+                      <strong>Координаты:</strong> {app.coordinates.lat.toFixed(6)}, {app.coordinates.lng.toFixed(6)}
+                    </div>
+
+                  </div>
+                )}
               </div>
-
-              <div className="applications-page__item-content">
-                <div className="applications-page__item-field">
-                  <strong>Дата получения:</strong> {new Date(app.created_at).toLocaleString('ru-RU', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </div>
-
-                <div className="applications-page__item-field">
-                  <strong>Адрес:</strong> {app.address}
-                </div>
-
-                {app.description && (
-                  <div className="applications-page__item-field">
-                    <strong>Описание:</strong> {app.description}
-                  </div>
-                )}
-
-                {app.submitted_by && (
-                  <div className="applications-page__item-field">
-                    <strong>Подал:</strong> {app.submitted_by}
-                  </div>
-                )}
-
-                {app.accepted_by && (
-                  <div className="applications-page__item-field">
-                    <strong>Принял:</strong> {app.accepted_by.name}
-                  </div>
-                )}
-
-                {app.team && (
-                  <div className="applications-page__item-field">
-                    <strong>Бригада:</strong> {app.team.name}
-                  </div>
-                )}
-
-                <div className="applications-page__item-field">
-                  <strong>Координаты:</strong> {app.coordinates.lat.toFixed(6)}, {app.coordinates.lng.toFixed(6)}
-                </div>
-              </div>
-
-              {canEdit && (
-                <div className="applications-page__item-actions">
-                  <label className="applications-page__action-label">
-                    Изменить статус:
-                    <select
-                      value={app.status}
-                      onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                      className="applications-page__status-select"
-                    >
-                      <option value="new">Новая</option>
-                      <option value="in_progress">В работе</option>
-                      <option value="completed">Выполнена</option>
-                      <option value="cancelled">Отменена</option>
-                    </select>
-                  </label>
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+
+      {/* Модальное окно редактирования заявки */}
+      {editingApplication && (
+        <ApplicationEditModal
+          application={editingApplication}
+          onClose={handleEditClose}
+          onSubmit={handleEditSubmit}
+        />
+      )}
     </div>
   );
 };

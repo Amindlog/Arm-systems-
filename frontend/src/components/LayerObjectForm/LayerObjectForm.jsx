@@ -1,15 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import './LayerObjectForm.css';
 
-const LayerObjectForm = ({ position, layerType, objectType, onClose, onSubmit }) => {
+const LayerObjectForm = ({ position, address, layerType, objectType, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
-    address: '',
+    address: address || '',
     description: '',
-    pipe_size: ''
+    pipe_size: '',
+    pipe_material: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Обновляем адрес при изменении пропса
+  useEffect(() => {
+    if (address) {
+      setFormData(prev => ({
+        ...prev,
+        address: address
+      }));
+    }
+  }, [address]);
 
   const handleChange = (e) => {
     setFormData({
@@ -47,7 +58,8 @@ const LayerObjectForm = ({ position, layerType, objectType, onClose, onSubmit })
         geojson: geojson,
         address: formData.address,
         description: formData.description,
-        pipe_size: objectType === 'line' ? formData.pipe_size : null
+        pipe_size: objectType === 'line' ? formData.pipe_size : null,
+        pipe_material: objectType === 'line' ? formData.pipe_material : null
       });
 
       onSubmit();
@@ -137,6 +149,26 @@ const LayerObjectForm = ({ position, layerType, objectType, onClose, onSubmit })
                   className="layer-object-form__input"
                   placeholder="Например: DN100, 150мм"
                 />
+              </div>
+              <div className="layer-object-form__field">
+                <label htmlFor="pipe_material" className="layer-object-form__label">
+                  Материал трубы
+                </label>
+                <select
+                  id="pipe_material"
+                  name="pipe_material"
+                  value={formData.pipe_material}
+                  onChange={handleChange}
+                  className="layer-object-form__input"
+                >
+                  <option value="">Выберите материал</option>
+                  <option value="plastic">Пластик</option>
+                  <option value="cast_iron">Чугун</option>
+                  <option value="steel">Сталь</option>
+                  <option value="asbestos_cement">Асбестоцемент</option>
+                  <option value="concrete">Бетон</option>
+                  <option value="other">Другое</option>
+                </select>
               </div>
               <div className="layer-object-form__field">
                 <label htmlFor="description" className="layer-object-form__label">

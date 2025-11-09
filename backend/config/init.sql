@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS layer_objects (
     address TEXT,
     description TEXT,
     pipe_size VARCHAR(50),
+    pipe_length DECIMAL(10, 2),
+    balance_delimitation VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

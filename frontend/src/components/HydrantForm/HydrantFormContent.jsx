@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import './HydrantForm.css';
 
-const HydrantFormContent = ({ position, onSubmit }) => {
+const HydrantFormContent = ({ position, address, onSubmit }) => {
   const [formData, setFormData] = useState({
-    address: '',
+    address: address || '',
     description: '',
     status: 'working'
   });
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Обновляем адрес при изменении пропса
+  useEffect(() => {
+    if (address) {
+      setFormData(prev => ({
+        ...prev,
+        address: address
+      }));
+    }
+  }, [address]);
 
   const handleChange = (e) => {
     setFormData({

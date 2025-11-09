@@ -3,9 +3,9 @@ import api from '../../services/api';
 import { authService } from '../../services/auth';
 import './ApplicationForm.css';
 
-const ApplicationFormContent = ({ position, onSubmit }) => {
+const ApplicationFormContent = ({ position, address, onSubmit }) => {
   const [formData, setFormData] = useState({
-    address: '',
+    address: address || '',
     description: '',
     submitted_by: '',
     team_id: ''
@@ -18,6 +18,16 @@ const ApplicationFormContent = ({ position, onSubmit }) => {
   useEffect(() => {
     loadTeams();
   }, []);
+
+  // Обновляем адрес при изменении пропса
+  useEffect(() => {
+    if (address) {
+      setFormData(prev => ({
+        ...prev,
+        address: address
+      }));
+    }
+  }, [address]);
 
   const loadTeams = async () => {
     try {
