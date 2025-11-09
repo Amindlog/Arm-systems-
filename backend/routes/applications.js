@@ -18,8 +18,10 @@ router.get('/', authenticateToken, async (req, res) => {
         a.status,
         a.latitude,
         a.longitude,
+        a.line_id,
         a.created_at,
         a.updated_at,
+        a.completed_at,
         t.id as team_id,
         t.name as team_name,
         u.id as accepted_by_id,
@@ -66,6 +68,7 @@ router.get('/', authenticateToken, async (req, res) => {
             lat: lat,
             lng: lng
           } : null,
+          line_id: row.line_id || null,
           team: row.team_id ? {
             id: row.team_id,
             name: row.team_name
@@ -75,7 +78,8 @@ router.get('/', authenticateToken, async (req, res) => {
             name: row.accepted_by_name
           } : null,
           created_at: row.created_at,
-          updated_at: row.updated_at
+          updated_at: row.updated_at,
+          completed_at: row.completed_at || null
         };
       })
     });
@@ -99,8 +103,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
         a.status,
         a.latitude,
         a.longitude,
+        a.line_id,
         a.created_at,
         a.updated_at,
+        a.completed_at,
         t.id as team_id,
         t.name as team_name,
         u.id as accepted_by_id,
@@ -126,17 +132,19 @@ router.get('/:id', authenticateToken, async (req, res) => {
         lat: parseFloat(row.latitude),
         lng: parseFloat(row.longitude)
       },
+      line_id: row.line_id || null,
       team: row.team_id ? {
         id: row.team_id,
         name: row.team_name
       } : null,
-      accepted_by: row.accepted_by_id ? {
-        id: row.accepted_by_id,
-        name: row.accepted_by_name
-      } : null,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    });
+        accepted_by: row.accepted_by_id ? {
+          id: row.accepted_by_id,
+          name: row.accepted_by_name
+        } : null,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        completed_at: row.completed_at || null
+      });
   } catch (error) {
     console.error('Get application error:', error);
     res.status(500).json({ error: 'Ошибка при получении заявки' });
@@ -146,7 +154,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Создать заявку (только диспетчер)
 router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async (req, res) => {
   try {
-    const { address, description, submitted_by, team_id, latitude, longitude } = req.body;
+    const { address, description, submitted_by, team_id, latitude, longitude, line_id } = req.body;
 
     if (!address || !team_id || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ error: 'Адрес, бригада и координаты обязательны' });
@@ -158,11 +166,19 @@ router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async
       return res.status(400).json({ error: 'Бригада не найдена' });
     }
 
+    // Проверка существования линии, если указана
+    if (line_id) {
+      const lineCheck = await pool.query('SELECT id FROM layer_objects WHERE id = $1 AND object_type = $2', [line_id, 'line']);
+      if (lineCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'Линия не найдена' });
+      }
+    }
+
     const result = await pool.query(`
-      INSERT INTO applications (address, description, submitted_by, accepted_by, team_id, latitude, longitude, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'new')
-      RETURNING id, address, description, submitted_by, status, latitude, longitude, team_id, created_at
-    `, [address, description || null, submitted_by || null, req.user.id, team_id, latitude, longitude]);
+      INSERT INTO applications (address, description, submitted_by, accepted_by, team_id, latitude, longitude, line_id, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'new')
+      RETURNING id, address, description, submitted_by, status, latitude, longitude, team_id, line_id, created_at
+    `, [address, description || null, submitted_by || null, req.user.id, team_id, latitude, longitude, line_id || null]);
 
     const application = result.rows[0];
 
@@ -182,6 +198,7 @@ router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async
           lat: parseFloat(application.latitude),
           lng: parseFloat(application.longitude)
         },
+        line_id: application.line_id || null,
         team: {
           id: team.id,
           name: team.name
@@ -203,7 +220,7 @@ router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { address, description, status, team_id } = req.body;
+    const { address, description, status, team_id, completed_at } = req.body;
 
     // Проверка существования заявки
     const existingApp = await pool.query('SELECT * FROM applications WHERE id = $1', [id]);
@@ -238,6 +255,25 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (status !== undefined) {
       updates.push(`status = $${paramCount++}`);
       params.push(status);
+      
+      // Если статус меняется на completed и completed_at не указан, устанавливаем текущее время
+      if (status === 'completed' && completed_at === undefined) {
+        updates.push(`completed_at = CURRENT_TIMESTAMP`);
+      }
+      // Если статус меняется с completed на другой, очищаем completed_at
+      if (status !== 'completed' && existingApp.rows[0].status === 'completed') {
+        updates.push(`completed_at = NULL`);
+      }
+    }
+
+    if (completed_at !== undefined) {
+      // Если completed_at указан явно, используем его
+      if (completed_at === null) {
+        updates.push(`completed_at = NULL`);
+      } else {
+        updates.push(`completed_at = $${paramCount++}`);
+        params.push(completed_at);
+      }
     }
 
     if (team_id !== undefined) {
@@ -294,7 +330,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
           name: acceptedBy.name
         } : null,
         created_at: updatedApp.created_at,
-        updated_at: updatedApp.updated_at
+        updated_at: updatedApp.updated_at,
+        completed_at: updatedApp.completed_at || null
       }
     });
   } catch (error) {

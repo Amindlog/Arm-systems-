@@ -3,7 +3,7 @@ import ApplicationFormContent from '../ApplicationForm/ApplicationFormContent';
 import HydrantFormContent from '../HydrantForm/HydrantFormContent';
 import './MapClickModal.css';
 
-const MapClickModal = ({ position, address, onClose, onSubmit }) => {
+const MapClickModal = ({ position, address, lineId, onClose, onSubmit }) => {
   const [activeTab, setActiveTab] = useState('application'); // 'application' или 'hydrant'
 
   const handleApplicationSubmit = async () => {
@@ -54,6 +54,7 @@ const MapClickModal = ({ position, address, onClose, onSubmit }) => {
             <ApplicationFormContent
               position={position}
               address={address}
+              lineId={lineId}
               onSubmit={handleApplicationSubmit}
             />
           ) : (

@@ -3,7 +3,7 @@ import api from '../../services/api';
 import { authService } from '../../services/auth';
 import './ApplicationForm.css';
 
-const ApplicationFormContent = ({ position, address, onSubmit }) => {
+const ApplicationFormContent = ({ position, address, lineId, onSubmit }) => {
   const [formData, setFormData] = useState({
     address: address || '',
     description: '',
@@ -73,7 +73,8 @@ const ApplicationFormContent = ({ position, address, onSubmit }) => {
         submitted_by: formData.submitted_by,
         team_id: parseInt(formData.team_id),
         latitude: position.lat,
-        longitude: position.lng
+        longitude: position.lng,
+        line_id: lineId || null
       });
 
       onSubmit();

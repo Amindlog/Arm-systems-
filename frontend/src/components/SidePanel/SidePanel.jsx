@@ -3,7 +3,7 @@ import MapToolsPanel from '../MapToolsPanel/MapToolsPanel';
 import LayerControls from '../LayerControls/LayerControls';
 import './SidePanel.css';
 
-const SidePanel = ({ onAddModeChange, addMode, onLayerVisibilityChange, layerVisibility, onLineBuildingModeChange, lineBuildingMode }) => {
+const SidePanel = ({ onAddModeChange, addMode, onLayerVisibilityChange, layerVisibility, onLineBuildingModeChange, lineBuildingMode, onHouseReleaseModeChange, houseReleaseMode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('tools');
 
@@ -54,6 +54,8 @@ const SidePanel = ({ onAddModeChange, addMode, onLayerVisibilityChange, layerVis
                 activeMode={addMode}
                 onLineBuildingModeChange={onLineBuildingModeChange}
                 lineBuildingMode={lineBuildingMode}
+                onHouseReleaseModeChange={onHouseReleaseModeChange}
+                houseReleaseMode={houseReleaseMode}
               />
             </div>
           )}

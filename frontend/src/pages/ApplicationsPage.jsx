@@ -333,6 +333,18 @@ const ApplicationsPage = () => {
                       </div>
                     )}
 
+                    {app.completed_at && (
+                      <div className="applications-page__item-field">
+                        <strong>Время выполнения:</strong> {new Date(app.completed_at).toLocaleString('ru-RU', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    )}
+
                     <div className="applications-page__item-field">
                       <strong>Координаты:</strong> {app.coordinates.lat.toFixed(6)}, {app.coordinates.lng.toFixed(6)}
                     </div>

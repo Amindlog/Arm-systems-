@@ -9,7 +9,8 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
     description: application?.description || '',
     submitted_by: application?.submitted_by || '',
     team_id: application?.team?.id || '',
-    status: application?.status || 'new'
+    status: application?.status || 'new',
+    completed_at: application?.completed_at || ''
   });
   const [teams, setTeams] = useState([]);
   const [error, setError] = useState('');
@@ -24,7 +25,8 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
         description: application.description || '',
         submitted_by: application.submitted_by || '',
         team_id: application.team?.id || '',
-        status: application.status || 'new'
+        status: application.status || 'new',
+        completed_at: application.completed_at ? new Date(application.completed_at).toISOString().slice(0, 16) : ''
       });
     }
   }, [application]);
@@ -65,7 +67,8 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
         description: formData.description,
         submitted_by: formData.submitted_by,
         team_id: formData.team_id ? parseInt(formData.team_id) : null,
-        status: formData.status
+        status: formData.status,
+        completed_at: formData.status === 'completed' && formData.completed_at ? new Date(formData.completed_at).toISOString() : null
       });
 
       onSubmit();
@@ -173,6 +176,22 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
             </select>
           </div>
 
+          {formData.status === 'completed' && (
+            <div className="application-edit-modal__field">
+              <label htmlFor="completed_at" className="application-edit-modal__label">
+                Время выполнения
+              </label>
+              <input
+                type="datetime-local"
+                id="completed_at"
+                name="completed_at"
+                value={formData.completed_at}
+                onChange={handleChange}
+                className="application-edit-modal__input"
+              />
+            </div>
+          )}
+
           <div className="application-edit-modal__field">
             <label htmlFor="description" className="application-edit-modal__label">
               Описание
@@ -193,6 +212,9 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
               <p><strong>Координаты:</strong> {application.coordinates.lat.toFixed(6)}, {application.coordinates.lng.toFixed(6)}</p>
             )}
             <p><strong>Создана:</strong> {new Date(application?.created_at).toLocaleString('ru-RU')}</p>
+            {application?.completed_at && (
+              <p><strong>Выполнена:</strong> {new Date(application.completed_at).toLocaleString('ru-RU')}</p>
+            )}
           </div>
 
           <div className="application-edit-modal__actions">

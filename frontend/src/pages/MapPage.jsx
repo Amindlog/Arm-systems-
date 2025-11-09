@@ -44,10 +44,24 @@ const MapPage = () => {
     layerType: null,
     startWell: null,
   });
+  const [houseReleaseMode, setHouseReleaseMode] = useState({
+    isActive: false,
+    layerType: null,
+    housePoint: null, // Точка дома (координаты)
+  });
   const [lineStartPoint, setLineStartPoint] = useState(null); // Начальная точка для построения линии
+  const [selectedStartWell, setSelectedStartWell] = useState(null); // Выбранный колодец как начало линии при активном инструменте "линия"
   const [hoveredLineId, setHoveredLineId] = useState(null);
+  const [hoveredWellId, setHoveredWellId] = useState(null); // ID подсвеченного колодца при наведении
+  const [wellConnectionMode, setWellConnectionMode] = useState({
+    isActive: false,
+    startWellId: null,
+    layerType: null,
+  }); // Режим соединения колодцев
   const [deleteConfirm, setDeleteConfirm] = useState(null); // Состояние для диалога подтверждения удаления
   const deleteConfirmResolveRef = useRef(null); // Ref для хранения resolve функции Promise
+  const [applicationsBlocked, setApplicationsBlocked] = useState(false); // Блокировка заявок после создания объекта
+  const [cursorPosition, setCursorPosition] = useState(null); // Позиция курсора на карте для preview линии
   const defaultCity = getDefaultCity();
   const [center, setCenter] = useState(defaultCity.center);
   const [zoom, setZoom] = useState(defaultCity.zoom);
@@ -160,6 +174,54 @@ const MapPage = () => {
       window.removeEventListener("openWellValves", handleOpenWellValves);
   }, [layerObjects]);
 
+  // Обработчик активации режима соединения колодцев
+  useEffect(() => {
+    const handleConnectWell = (event) => {
+      if (event.detail && event.detail.wellId) {
+        const well = layerObjects.find(
+          (obj) => obj.id === event.detail.wellId && obj.object_type === "well"
+        );
+        if (well) {
+          // Активируем режим соединения с выбранным колодцем
+          setWellConnectionMode({
+            isActive: true,
+            startWellId: well.id,
+            layerType: well.layer_type,
+          });
+          // Блокируем заявки
+          setApplicationsBlocked(true);
+        }
+      }
+    };
+
+    const handleCancelWellConnection = () => {
+      // Отменяем режим соединения колодцев
+      setWellConnectionMode({
+        isActive: false,
+        startWellId: null,
+        layerType: null,
+      });
+      setHoveredWellId(null);
+      // Разрешаем заявки, если все инструменты неактивны
+      if (!addMode.isActive && !lineBuildingMode.isActive && !houseReleaseMode.isActive) {
+        setApplicationsBlocked(false);
+      }
+    };
+
+    window.addEventListener("connectWell", handleConnectWell);
+    window.addEventListener("cancelWellConnection", handleCancelWellConnection);
+    return () => {
+      window.removeEventListener("connectWell", handleConnectWell);
+      window.removeEventListener(
+        "cancelWellConnection",
+        handleCancelWellConnection
+      );
+    };
+  }, [layerObjects, addMode, lineBuildingMode]);
+
+  // Состояние для хранения ID линии при создании заявки
+  const [selectedLineId, setSelectedLineId] = useState(null);
+
   // Обработчик создания заявки при клике на линию
   useEffect(() => {
     const handleCreateApplicationAtLine = async (event) => {
@@ -168,11 +230,21 @@ const MapPage = () => {
         return;
       }
 
+      // Запрещаем создание заявок, если они заблокированы после создания объекта
+      if (applicationsBlocked) {
+        return;
+      }
+
       if (event.detail && event.detail.lat && event.detail.lng) {
         const position = {
           lat: event.detail.lat,
           lng: event.detail.lng,
         };
+
+        // Сохраняем ID линии, если он передан
+        if (event.detail.lineId) {
+          setSelectedLineId(event.detail.lineId);
+        }
 
         // Получаем адрес по координатам
         const address = await getAddressFromCoordinates(
@@ -194,7 +266,7 @@ const MapPage = () => {
         "createApplicationAtLine",
         handleCreateApplicationAtLine
       );
-  }, [addMode]); // Добавляем addMode в зависимости
+  }, [addMode, applicationsBlocked]); // Добавляем applicationsBlocked в зависимости
 
   // Обработчик редактирования трубы
   useEffect(() => {
@@ -232,7 +304,7 @@ const MapPage = () => {
 
         if (!object) {
           console.error("Объект не найден в layerObjects:", objectId);
-          alert("Объект не найден");
+          // Объект не найден - просто логируем в консоль, без alert
           return;
         }
 
@@ -263,13 +335,14 @@ const MapPage = () => {
 
         try {
           await api.delete(`/map/layers/objects/${objectId}`);
-          alert(`${objectName} успешно удален`);
+          // Успешное удаление - просто обновляем данные, без alert
           await loadMapData();
         } catch (error) {
           console.error("Ошибка при удалении объекта:", error);
           const errorMessage =
             error.response?.data?.error || "Ошибка при удалении объекта";
-          alert(errorMessage);
+          // Показываем ошибку только в консоли, без alert
+          console.error(errorMessage);
         }
       }
     };
@@ -363,21 +436,7 @@ const MapPage = () => {
     }
   };
 
-  const handleMapClick = (e) => {
-    const user = authService.getUser();
-    if (user && user.role === "director") {
-      try {
-        const coords = e.get ? e.get("coords") : e.originalEvent.coords;
-        setClickedPosition({
-          lat: coords[0],
-          lng: coords[1],
-        });
-        setShowForm(true);
-      } catch (error) {
-        console.error("Ошибка обработки клика на карте:", error);
-      }
-    }
-  };
+  // handleMapClick больше не используется, так как клик обрабатывается в onClick YandexMap
 
   // Функция для получения адреса по координатам
   const getAddressFromCoordinates = async (lat, lng) => {
@@ -425,6 +484,7 @@ const MapPage = () => {
     setShowModal(false);
     setClickedPosition(null);
     setClickedAddress(null);
+    setSelectedLineId(null); // Сбрасываем ID линии
   };
 
   const handleModalSubmit = async () => {
@@ -505,6 +565,33 @@ const MapPage = () => {
     return "#dc2626"; // Красный по умолчанию
   };
 
+  // Получение иконки маркера для заявки на основе статуса
+  const getApplicationIcon = (app) => {
+    // Всегда используем одну иконку, но цвет будет определяться через фильтр
+    return "/images/icons/drop-red.svg";
+  };
+
+  // Получение цвета для иконки заявки на основе статуса
+  const getApplicationIconColor = (app) => {
+    // Завершенные заявки не отображаются на карте (фильтруются в activeApps)
+    
+    // Цвет определяется статусом
+    if (app.status === "new") {
+      return "#dc2626"; // Красный для новых заявок
+    }
+    
+    if (app.status === "in_progress") {
+      // Для заявок в работе цвет зависит от бригады
+      if (app.team) {
+        const isWater = app.team.name === "водосеть";
+        return isWater ? "#0066ff" : "#facc15"; // Ярко-синий для водосети, ярко-желтый для канализации
+      }
+      return "#0066ff"; // По умолчанию синий для в работе
+    }
+
+    return "#dc2626"; // Красный по умолчанию
+  };
+
   // Получение цвета маркера для группы заявок
   const getGroupColor = (group) => {
     const hasWater = group.waterCount > 0;
@@ -536,13 +623,23 @@ const MapPage = () => {
     return "#dc2626";
   };
 
+  // Функция для перевода статуса заявки на русский
+  const getStatusText = (status) => {
+    const statusMap = {
+      new: "Новая",
+      in_progress: "В работе",
+      completed: "Выполнена",
+    };
+    return statusMap[status] || status;
+  };
+
   // Создание содержимого балуна для заявки
   const createApplicationBalloon = (app) => {
     return `
       <div class="map-page__popup">
         <h3>Заявка #${app.id}</h3>
         <p><strong>Адрес:</strong> ${app.address}</p>
-        <p><strong>Статус:</strong> ${app.status}</p>
+        <p><strong>Статус:</strong> ${getStatusText(app.status)}</p>
         ${app.team ? `<p><strong>Бригада:</strong> ${app.team.name}</p>` : ""}
         ${
           app.description
@@ -579,7 +676,7 @@ const MapPage = () => {
                 app.address
               }</p>
               <p style="margin: 2px 0; font-size: 12px;"><strong>Статус:</strong> ${
-                app.status
+                getStatusText(app.status)
               }</p>
               ${
                 app.team
@@ -758,6 +855,26 @@ const MapPage = () => {
                 );
                 setClickedAddress(address);
 
+                // Если активен режим выпуска с дома
+                if (houseReleaseMode.isActive) {
+                  if (!houseReleaseMode.housePoint) {
+                    // Первый клик - выбираем точку дома
+                    setHouseReleaseMode({
+                      ...houseReleaseMode,
+                      housePoint: position,
+                    });
+                    return;
+                  } else {
+                    // Если уже выбрана точка дома, сбрасываем выбор при клике на карту
+                    setHouseReleaseMode({
+                      ...houseReleaseMode,
+                      housePoint: null,
+                    });
+                    setCursorPosition(null);
+                    return;
+                  }
+                }
+
                 // Если активен режим добавления объектов слоев
                 if (
                   addMode.isActive &&
@@ -766,6 +883,12 @@ const MapPage = () => {
                 ) {
                   // Если создаем линию - нужны две точки
                   if (addMode.objectType === "line") {
+                    // Если выбран колодец как начало линии, сбрасываем выбор при клике на карту
+                    if (selectedStartWell) {
+                      setSelectedStartWell(null);
+                      alert("Выбор колодца сброшен. Выберите начальную точку на карте или колодец.");
+                    }
+                    
                     if (!lineStartPoint) {
                       // Первая точка - сохраняем
                       setLineStartPoint(position);
@@ -786,21 +909,47 @@ const MapPage = () => {
                   } else {
                     // Для колодца и камеры - одна точка
                     setClickedPosition(position);
-                    setShowLayerObjectForm(true);
+                    // Автоматически определяем адрес по координатам для колодца и камеры
+                    getAddressFromCoordinates(position.lat, position.lng).then((address) => {
+                      setClickedAddress(address || '');
+                      setShowLayerObjectForm(true);
+                    }).catch((error) => {
+                      console.error("Ошибка при получении адреса:", error);
+                      setClickedAddress('');
+                      setShowLayerObjectForm(true);
+                    });
                     // Запрещаем создание заявок в этом режиме
                     return;
                   }
                 }
 
                 // Обычный режим - создание заявки/гидранта
-                // Проверяем, что режим создания объектов не активен
-                if (!addMode.isActive) {
+                // Проверяем, что режим создания объектов не активен и заявки не заблокированы
+                if (!addMode.isActive && !applicationsBlocked && !houseReleaseMode.isActive) {
                   setClickedPosition(position);
                   setShowModal(true);
                 }
               } catch (error) {
                 console.error("Ошибка обработки клика на карте:", error);
               }
+            }
+          }}
+          onMouseMove={(e) => {
+            // Отслеживаем позицию курсора для preview линии в режиме выпуска с дома
+            if (houseReleaseMode.isActive && houseReleaseMode.housePoint) {
+              try {
+                const coords = e.get('coords');
+                if (coords && coords.length === 2) {
+                  setCursorPosition({
+                    lat: coords[0],
+                    lng: coords[1],
+                  });
+                }
+              } catch (error) {
+                // Игнорируем ошибки при получении координат
+              }
+            } else {
+              setCursorPosition(null);
             }
           }}
         >
@@ -812,7 +961,7 @@ const MapPage = () => {
             visibleMapFeatures.length > 0 &&
             visibleMapFeatures.map((feature) => {
               const type = feature.type;
-              const color = type === "water" ? "#0066cc" : "#cc6600";
+              const color = type === "water" ? "#0066cc" : "#8B4513"; // Синий для водопровода, коричневый для канализации
 
               // Преобразуем GeoJSON в формат для Яндекс Карт
               let coordinates = [];
@@ -871,7 +1020,7 @@ const MapPage = () => {
                     coord[0],
                   ]);
                   const color =
-                    obj.layer_type === "water" ? "#0066cc" : "#cc6600";
+                    obj.layer_type === "water" ? "#0066cc" : "#8B4513"; // Синий для водопровода, коричневый для канализации
                   const layerName =
                     obj.layer_type === "water" ? "Водопровод" : "Канализация";
 
@@ -920,18 +1069,165 @@ const MapPage = () => {
                   const user = authService.getUser();
                   const canEdit = user && user.role === "director";
 
-                  // Вычисляем середину линии для создания заявки
+                  // Вычисляем геометрическую середину линии для создания заявки
                   const getLineCenter = () => {
-                    if (coordinates.length > 0) {
-                      const midIndex = Math.floor(coordinates.length / 2);
-                      return coordinates[midIndex];
+                    if (coordinates.length === 0) {
+                      return [0, 0];
                     }
-                    return coordinates[0] || [0, 0];
+                    
+                    if (coordinates.length === 1) {
+                      return coordinates[0];
+                    }
+                    
+                    // Вычисляем общую длину линии
+                    const R = 6371; // Радиус Земли в километрах
+                    let totalLength = 0;
+                    const segmentLengths = [];
+                    
+                    for (let i = 0; i < coordinates.length - 1; i++) {
+                      const [lat1, lng1] = coordinates[i];
+                      const [lat2, lng2] = coordinates[i + 1];
+                      
+                      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+                      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+                      
+                      const a =
+                        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos((lat1 * Math.PI) / 180) *
+                          Math.cos((lat2 * Math.PI) / 180) *
+                          Math.sin(dLng / 2) *
+                          Math.sin(dLng / 2);
+                      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                      const segmentLength = R * c;
+                      
+                      totalLength += segmentLength;
+                      segmentLengths.push({
+                        start: coordinates[i],
+                        end: coordinates[i + 1],
+                        length: segmentLength,
+                        cumulativeLength: totalLength
+                      });
+                    }
+                    
+                    // Находим точку на половине длины линии
+                    const halfLength = totalLength / 2;
+                    
+                    for (const segment of segmentLengths) {
+                      if (halfLength <= segment.cumulativeLength) {
+                        // Вычисляем позицию на этом сегменте
+                        const segmentStartLength = segment.cumulativeLength - segment.length;
+                        const positionOnSegment = (halfLength - segmentStartLength) / segment.length;
+                        
+                        const [lat1, lng1] = segment.start;
+                        const [lat2, lng2] = segment.end;
+                        
+                        // Интерполируем координаты
+                        const centerLat = lat1 + (lat2 - lat1) * positionOnSegment;
+                        const centerLng = lng1 + (lng2 - lng1) * positionOnSegment;
+                        
+                        return [centerLat, centerLng];
+                      }
+                    }
+                    
+                    // Если не нашли (не должно произойти), возвращаем последнюю точку
+                    return coordinates[coordinates.length - 1];
                   };
 
                   const lineCenter = getLineCenter();
                   const isHovered = hoveredLineId === obj.id;
-                  const strokeColor = isHovered ? "#10b981" : color; // Зеленый при наведении
+                  
+                  // Функция для проверки, находится ли точка на линии
+                  const isPointOnLine = (pointLat, pointLng, lineCoords, tolerance = 0.001) => {
+                    // Проверяем расстояние от точки до каждого сегмента линии
+                    let minDistance = Infinity;
+                    
+                    for (let i = 0; i < lineCoords.length - 1; i++) {
+                      const [lat1, lng1] = lineCoords[i];
+                      const [lat2, lng2] = lineCoords[i + 1];
+                      
+                      // Вычисляем расстояние от точки до сегмента линии
+                      const A = pointLat - lat1;
+                      const B = pointLng - lng1;
+                      const C = lat2 - lat1;
+                      const D = lng2 - lng1;
+                      
+                      const dot = A * C + B * D;
+                      const lenSq = C * C + D * D;
+                      let param = -1;
+                      
+                      if (lenSq !== 0) {
+                        param = dot / lenSq;
+                      }
+                      
+                      let xx, yy;
+                      
+                      if (param < 0) {
+                        xx = lat1;
+                        yy = lng1;
+                      } else if (param > 1) {
+                        xx = lat2;
+                        yy = lng2;
+                      } else {
+                        xx = lat1 + param * C;
+                        yy = lng1 + param * D;
+                      }
+                      
+                      const dx = pointLat - xx;
+                      const dy = pointLng - yy;
+                      const distance = Math.sqrt(dx * dx + dy * dy);
+                      
+                      if (distance < minDistance) {
+                        minDistance = distance;
+                      }
+                    }
+                    
+                    // Также проверяем расстояние до всех точек линии (на случай, если заявка создана на конце линии)
+                    for (let i = 0; i < lineCoords.length; i++) {
+                      const [lat, lng] = lineCoords[i];
+                      const dx = pointLat - lat;
+                      const dy = pointLng - lng;
+                      const distance = Math.sqrt(dx * dx + dy * dy);
+                      
+                      if (distance < minDistance) {
+                        minDistance = distance;
+                      }
+                    }
+                    
+                    return minDistance <= tolerance;
+                  };
+                  
+                  // Проверяем, есть ли незавершенные заявки на этой линии
+                  // Используем activeApps, которые уже отфильтрованы (без завершенных)
+                  // Проверяем по line_id (если есть) или по координатам (для обратной совместимости)
+                  const hasUncompletedApplications = activeApps.some((app) => {
+                    // Если у заявки есть line_id, проверяем ТОЛЬКО по line_id (не по координатам)
+                    if (app.line_id) {
+                      return app.line_id === obj.id;
+                    }
+                    
+                    // Если line_id нет, проверяем по координатам (для обратной совместимости)
+                    // Только для заявок без line_id
+                    if (!app.coordinates || app.coordinates.lat == null || app.coordinates.lng == null) {
+                      return false;
+                    }
+                    // Проверяем, находится ли заявка на линии с увеличенной толерантностью
+                    return isPointOnLine(
+                      app.coordinates.lat,
+                      app.coordinates.lng,
+                      coordinates,
+                      0.001 // Увеличенная толерантность для определения близости к линии (примерно 100 метров)
+                    );
+                  });
+                  
+                  // Определяем цвет линии
+                  let strokeColor;
+                  if (isHovered) {
+                    strokeColor = "#10b981"; // Зеленый при наведении
+                  } else if (hasUncompletedApplications) {
+                    strokeColor = "#dc2626"; // Красный, если есть незавершенные заявки
+                  } else {
+                    strokeColor = color; // Обычный цвет (синий для water, оранжевый для sewer)
+                  }
 
                   // Обработчик наведения на линию
                   const handleMouseEnter = () => {
@@ -1108,11 +1404,11 @@ const MapPage = () => {
                                         : ""
                                     }
                                     <p>
-                                      ${
-                                        !addMode.isActive
-                                          ? `<button onclick="window.dispatchEvent(new CustomEvent('createApplicationAtLine', {detail: {lineId: ${obj.id}, lat: ${lineCenter[0]}, lng: ${lineCenter[1]}}}))" style="margin-top: 8px; padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">Создать заявку</button>`
-                                          : ""
-                                      }
+                                    ${
+                                      !addMode.isActive && !applicationsBlocked
+                                        ? `<button onclick="window.dispatchEvent(new CustomEvent('createApplicationAtLine', {detail: {lineId: ${obj.id}, lat: ${lineCenter[0]}, lng: ${lineCenter[1]}}}))" style="margin-top: 8px; padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">Создать заявку</button>`
+                                        : ""
+                                    }
                                       ${
                                         canEdit
                                           ? `<button onclick="window.dispatchEvent(new CustomEvent('editPipe', {detail: {pipeId: ${obj.id}}}))" style="margin-top: 8px; padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">Редактировать</button>`
@@ -1137,8 +1433,8 @@ const MapPage = () => {
                         onMouseLeave={handleMouseLeave}
                         onClick={handlePipeClick}
                       />
-                      {/* Стрелки направления движения воды */}
-                      {arrowPoints.map((arrowPoint, arrowIndex) => (
+                      {/* Стрелки направления движения воды - временно отключены */}
+                      {/* {arrowPoints.map((arrowPoint, arrowIndex) => (
                         <Placemark
                           key={`arrow-${obj.id}-${arrowIndex}`}
                           geometry={[arrowPoint.lat, arrowPoint.lng]}
@@ -1152,7 +1448,7 @@ const MapPage = () => {
                             cursor: "default",
                           }}
                         />
-                      ))}
+                      ))} */}
                     </React.Fragment>
                   );
                 }
@@ -1192,6 +1488,12 @@ const MapPage = () => {
                     );
                     return null;
                   }
+                  // Определяем, подсвечен ли колодец
+                  const isWellHovered =
+                    hoveredWellId === obj.id &&
+                    wellConnectionMode.isActive &&
+                    obj.object_type === "well";
+
                   const iconImage =
                     obj.object_type === "well"
                       ? obj.layer_type === "sewer"
@@ -1312,11 +1614,198 @@ const MapPage = () => {
                     }
                   };
 
+                  // Обработчик наведения на колодец
+                  const handleWellMouseEnter = () => {
+                    // Если активен режим соединения колодцев, подсвечиваем колодец
+                    if (
+                      wellConnectionMode.isActive &&
+                      obj.object_type === "well" &&
+                      obj.id !== wellConnectionMode.startWellId
+                    ) {
+                      setHoveredWellId(obj.id);
+                    }
+                    // Если активен режим выпуска с дома, подсвечиваем колодец
+                    if (
+                      houseReleaseMode.isActive &&
+                      houseReleaseMode.housePoint &&
+                      obj.object_type === "well"
+                    ) {
+                      setHoveredWellId(obj.id);
+                      // Очищаем позицию курсора, так как наведены на колодец
+                      setCursorPosition(null);
+                    }
+                  };
+
+                  // Обработчик ухода курсора с колодца
+                  const handleWellMouseLeave = () => {
+                    setHoveredWellId(null);
+                    // Если активен режим выпуска с дома, восстанавливаем отслеживание курсора
+                    if (
+                      houseReleaseMode.isActive &&
+                      houseReleaseMode.housePoint
+                    ) {
+                      // Позиция курсора будет обновлена в onMouseMove
+                    }
+                  };
+
                   // Обработчик клика на колодец для построения линии
                   const handleWellClick = async (e) => {
                     e.stopPropagation();
 
-                    // Если активен режим построения линии между колодцами
+                    // Если активен режим выпуска с дома
+                    if (
+                      houseReleaseMode.isActive &&
+                      houseReleaseMode.housePoint &&
+                      obj.object_type === "well"
+                    ) {
+                      // Создаем линию от дома к колодцу
+                      const housePoint = houseReleaseMode.housePoint;
+                      const well = obj;
+
+                      try {
+                        const houseCoords = [housePoint.lng, housePoint.lat];
+                        const wellCoords = well.geojson.coordinates;
+
+                        const geojson = {
+                          type: "LineString",
+                          coordinates: [houseCoords, wellCoords],
+                        };
+
+                        await api.post("/map/layers/objects", {
+                          layer_type: houseReleaseMode.layerType,
+                          object_type: "line",
+                          geojson: geojson,
+                          address: null,
+                          description: `Выпуск с дома к колодцу #${well.id}`,
+                          pipe_size: null,
+                        });
+
+                        // Обновляем данные на карте
+                        await loadMapData();
+
+                        // Сбрасываем точку дома, но оставляем режим активным для продолжения
+                        setHouseReleaseMode({
+                          ...houseReleaseMode,
+                          housePoint: null,
+                        });
+                        setCursorPosition(null);
+                        setHoveredWellId(null);
+                        // Блокируем заявки после создания объекта
+                        setApplicationsBlocked(true);
+                      } catch (error) {
+                        console.error("Ошибка при создании выпуска с дома:", error);
+                        alert("Ошибка при создании выпуска с дома");
+                      }
+                      return; // Прерываем обработку
+                    }
+
+                    // Если активен режим соединения колодцев
+                    if (
+                      wellConnectionMode.isActive &&
+                      obj.object_type === "well"
+                    ) {
+                      if (obj.id === wellConnectionMode.startWellId) {
+                        // Клик на тот же колодец - ничего не делаем
+                        return;
+                      }
+
+                      // Выбираем второй колодец и создаем линию
+                      const startWell = layerObjects.find(
+                        (w) => w.id === wellConnectionMode.startWellId
+                      );
+                      const endWell = obj;
+
+                      if (startWell && endWell) {
+                        try {
+                          const startCoords = startWell.geojson.coordinates;
+                          const endCoords = endWell.geojson.coordinates;
+
+                          const geojson = {
+                            type: "LineString",
+                            coordinates: [startCoords, endCoords],
+                          };
+
+                          await api.post("/map/layers/objects", {
+                            layer_type: wellConnectionMode.layerType,
+                            object_type: "line",
+                            geojson: geojson,
+                            address: null,
+                            description: `Труба между колодцами #${startWell.id} и #${endWell.id}`,
+                            pipe_size: null,
+                          });
+
+                          // Обновляем данные на карте
+                          await loadMapData();
+
+                          // Сбрасываем выбранный колодец, но оставляем режим активным для продолжения
+                          setWellConnectionMode({
+                            isActive: true,
+                            startWellId: endWell.id, // Новый начальный колодец - можно продолжать соединение
+                            layerType: wellConnectionMode.layerType,
+                          });
+                          // Блокируем заявки после создания объекта
+                          setApplicationsBlocked(true);
+                        } catch (error) {
+                          console.error("Ошибка при создании линии:", error);
+                        }
+                      }
+                      return; // Прерываем обработку
+                    }
+
+                    // Если активен инструмент "линия" (addMode)
+                    if (
+                      addMode.isActive &&
+                      addMode.objectType === "line" &&
+                      obj.object_type === "well"
+                    ) {
+                      if (!selectedStartWell) {
+                        // Выбираем первый колодец
+                        setSelectedStartWell(obj);
+                        alert(
+                          `Выбран колодец #${obj.id} как начало линии. Теперь выберите второй колодец для создания линии.`
+                        );
+                      } else if (selectedStartWell.id !== obj.id) {
+                        // Выбираем второй колодец и создаем линию
+                        const startWell = selectedStartWell;
+                        const endWell = obj;
+
+                        try {
+                          const startCoords = startWell.geojson.coordinates;
+                          const endCoords = endWell.geojson.coordinates;
+
+                          const geojson = {
+                            type: "LineString",
+                            coordinates: [startCoords, endCoords],
+                          };
+
+                          await api.post("/map/layers/objects", {
+                            layer_type: addMode.layerType,
+                            object_type: "line",
+                            geojson: geojson,
+                            address: null,
+                            description: `Труба между колодцами #${startWell.id} и #${endWell.id}`,
+                            pipe_size: null,
+                          });
+
+                          // Обновляем данные на карте
+                          await loadMapData();
+
+                          // Сбрасываем выбранный колодец, но оставляем инструмент активным для продолжения
+                          setSelectedStartWell(null);
+                          // Блокируем заявки после создания объекта
+                          setApplicationsBlocked(true);
+                          alert("Линия успешно создана между колодцами! Выберите первый колодец для следующей линии.");
+                        } catch (error) {
+                          console.error("Ошибка при создании линии:", error);
+                          alert("Ошибка при создании линии");
+                        }
+                      } else {
+                        alert("Выберите другой колодец для создания линии.");
+                      }
+                      return; // Прерываем обработку, чтобы не срабатывали другие обработчики
+                    }
+
+                    // Если активен режим построения линии между колодцами (старый режим)
                     if (
                       lineBuildingMode.isActive &&
                       obj.object_type === "well"
@@ -1356,13 +1845,15 @@ const MapPage = () => {
                           // Обновляем данные на карте
                           await loadMapData();
 
-                          // Сбрасываем режим построения
+                          // Сбрасываем режим построения, но оставляем возможность создать еще одну трубу
                           setLineBuildingMode({
-                            isActive: false,
-                            layerType: null,
+                            isActive: true,
+                            layerType: lineBuildingMode.layerType,
                             startWell: null,
                           });
-                          alert("Труба успешно создана между колодцами!");
+                          // Блокируем заявки после создания объекта
+                          setApplicationsBlocked(true);
+                          alert("Труба успешно создана между колодцами! Выберите первый колодец для следующей трубы.");
                         } catch (error) {
                           console.error("Ошибка при создании трубы:", error);
                           alert("Ошибка при создании трубы");
@@ -1410,6 +1901,26 @@ const MapPage = () => {
                                         : ""
                                     }
                                     ${
+                                      obj.object_type === "well" &&
+                                      !wellConnectionMode.isActive
+                                        ? `<button onclick="window.dispatchEvent(new CustomEvent('connectWell', {detail: {wellId: ${obj.id}}}))" style="padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Соединить</button>`
+                                        : ""
+                                    }
+                                    ${
+                                      wellConnectionMode.isActive &&
+                                      obj.object_type === "well" &&
+                                      obj.id === wellConnectionMode.startWellId
+                                        ? `<div style="padding: 6px 12px; background: #f59e0b; color: white; border: none; border-radius: 4px; font-size: 12px; margin-bottom: 8px;">Выбран для соединения</div>`
+                                        : ""
+                                    }
+                                    ${
+                                      wellConnectionMode.isActive &&
+                                      obj.object_type === "well" &&
+                                      obj.id === wellConnectionMode.startWellId
+                                        ? `<button onclick="window.dispatchEvent(new CustomEvent('cancelWellConnection', {detail: {}}))" style="padding: 6px 12px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Отмена</button>`
+                                        : ""
+                                    }
+                                    ${
                                       lineBuildingMode.isActive &&
                                       obj.object_type === "well"
                                         ? `<button onclick="window.dispatchEvent(new CustomEvent('selectWellForLine', {detail: {wellId: ${
@@ -1433,19 +1944,25 @@ const MapPage = () => {
                       options={{
                         iconLayout: "default#image",
                         iconImageHref: iconImage,
-                        iconImageSize: [16, 16],
-                        iconImageOffset: [-8, -8],
-                        iconImageScale: 1,
+                        iconImageSize: isWellHovered ? [20, 20] : [16, 16],
+                        iconImageOffset: isWellHovered ? [-10, -10] : [-8, -8],
+                        iconImageScale: isWellHovered ? 1.25 : 1,
                         draggable: true,
                         iconImageRotation: rotation,
                         cursor:
-                          lineBuildingMode.isActive &&
-                          obj.object_type === "well"
+                          wellConnectionMode.isActive &&
+                          obj.object_type === "well" &&
+                          obj.id !== wellConnectionMode.startWellId
+                            ? "pointer"
+                            : lineBuildingMode.isActive &&
+                              obj.object_type === "well"
                             ? "pointer"
                             : "default",
                       }}
                       onDragEnd={handleDragEnd}
                       onClick={handleWellClick}
+                      onMouseEnter={handleWellMouseEnter}
+                      onMouseLeave={handleWellMouseLeave}
                     />
                   );
                 }
@@ -1457,6 +1974,9 @@ const MapPage = () => {
           {groupedApps.map((group, index) => {
             if (group.applications.length === 1) {
               const app = group.applications[0];
+              const iconColor = getApplicationIconColor(app);
+              // Завершенные заявки не отображаются (фильтруются в activeApps)
+              
               return (
                 <Placemark
                   key={`app-${app.id}`}
@@ -1465,11 +1985,14 @@ const MapPage = () => {
                     balloonContent: createApplicationBalloon(app),
                   }}
                   options={{
-                    iconLayout: "default#image",
-                    iconImageHref: "/images/icons/drop-red.svg",
+                    iconLayout: "default#imageWithContent",
+                    iconImageHref: getApplicationIcon(app),
                     iconImageSize: [24, 32],
                     iconImageOffset: [-12, -32],
-                    iconImageScale: 1,
+                    iconImageColor: iconColor,
+                    iconContent: "",
+                    iconContentOffset: [0, 0],
+                    iconContentSize: [0, 0],
                   }}
                 />
               );
@@ -1484,6 +2007,19 @@ const MapPage = () => {
                   ? group.sewerCount.toString()
                   : group.applications.length.toString();
 
+              // Определяем цвет группы на основе статусов заявок
+              // Завершенные заявки не отображаются (фильтруются в activeApps)
+              const hasInProgress = group.applications.some(a => a.status === "in_progress");
+              const hasNew = group.applications.some(a => a.status === "new");
+              
+              let groupIconColor = "#dc2626"; // Красный по умолчанию
+              if (hasInProgress) {
+                // Если есть заявки в работе, используем цвет приоритетной бригады
+                groupIconColor = getGroupColor(group);
+              } else if (hasNew) {
+                groupIconColor = "#dc2626"; // Красный для новых
+              }
+
               return (
                 <Placemark
                   key={`group-${index}-${group.lat}-${group.lng}`}
@@ -1493,11 +2029,14 @@ const MapPage = () => {
                     iconContent: badgeText,
                   }}
                   options={{
-                    iconLayout: "default#image",
+                    iconLayout: "default#imageWithContent",
                     iconImageHref: "/images/icons/drop-red.svg",
                     iconImageSize: [24, 32],
                     iconImageOffset: [-12, -32],
-                    iconImageScale: 1,
+                    iconImageColor: groupIconColor,
+                    iconContent: badgeText,
+                    iconContentOffset: [0, -8],
+                    iconContentSize: [24, 24],
                   }}
                 />
               );
@@ -1596,6 +2135,54 @@ const MapPage = () => {
               }
               return null;
             })}
+
+          {/* Preview линия от точки дома до курсора или колодца в режиме выпуска с дома */}
+          {houseReleaseMode.isActive && houseReleaseMode.housePoint && (
+            <>
+              {cursorPosition && !hoveredWellId && (() => {
+                const previewColor = houseReleaseMode.layerType === "water" ? "#0066cc" : "#8B4513"; // Синий для водопровода, коричневый для канализации
+                return (
+                  <Polyline
+                    key="preview-line-cursor"
+                    geometry={[
+                      [houseReleaseMode.housePoint.lat, houseReleaseMode.housePoint.lng],
+                      [cursorPosition.lat, cursorPosition.lng],
+                    ]}
+                    options={{
+                      strokeColor: previewColor,
+                      strokeWidth: 2,
+                      strokeOpacity: 0.6,
+                      strokeStyle: "5 5",
+                    }}
+                  />
+                );
+              })()}
+              {hoveredWellId && (() => {
+                const hoveredWell = layerObjects.find(
+                  (obj) => obj.id === hoveredWellId && obj.object_type === "well"
+                );
+                if (hoveredWell) {
+                  const wellCoords = hoveredWell.geojson.coordinates;
+                  const previewColor = houseReleaseMode.layerType === "water" ? "#0066cc" : "#8B4513"; // Синий для водопровода, коричневый для канализации
+                  return (
+                    <Polyline
+                      key="preview-line-well"
+                      geometry={[
+                        [houseReleaseMode.housePoint.lat, houseReleaseMode.housePoint.lng],
+                        [wellCoords[1], wellCoords[0]], // GeoJSON формат: [lng, lat], Yandex Maps: [lat, lng]
+                      ]}
+                      options={{
+                        strokeColor: previewColor,
+                        strokeWidth: 3,
+                        strokeOpacity: 0.8,
+                      }}
+                    />
+                  );
+                }
+                return null;
+              })()}
+            </>
+          )}
         </YandexMap>
       </YMaps>
 
@@ -1606,13 +2193,116 @@ const MapPage = () => {
           // Сбрасываем начальную точку линии при изменении режима
           if (!newAddMode.isActive || newAddMode.objectType !== "line") {
             setLineStartPoint(null);
+            setSelectedStartWell(null); // Сбрасываем выбранный колодец
+          }
+          // Разрешаем заявки только если все инструменты неактивны (нажата кнопка "Отмена")
+          if (
+            !newAddMode.isActive &&
+            !lineBuildingMode.isActive &&
+            !wellConnectionMode.isActive &&
+            !houseReleaseMode.isActive
+          ) {
+            setApplicationsBlocked(false);
+            setSelectedStartWell(null); // Сбрасываем выбранный колодец при деактивации
+            setWellConnectionMode({
+              isActive: false,
+              startWellId: null,
+              layerType: null,
+            }); // Сбрасываем режим соединения
+            // Сбрасываем режим выпуска с дома
+            setHouseReleaseMode({
+              isActive: false,
+              layerType: null,
+              housePoint: null,
+            });
+          } else if (newAddMode.isActive) {
+            // Если инструмент активен, блокируем заявки
+            setApplicationsBlocked(true);
+            // Деактивируем режим соединения при активации другого инструмента
+            setWellConnectionMode({
+              isActive: false,
+              startWellId: null,
+              layerType: null,
+            });
+            // Деактивируем режим выпуска с дома
+            setHouseReleaseMode({
+              isActive: false,
+              layerType: null,
+              housePoint: null,
+            });
           }
         }}
         addMode={addMode}
         onLayerVisibilityChange={setLayerVisibility}
         layerVisibility={layerVisibility}
-        onLineBuildingModeChange={setLineBuildingMode}
+        onLineBuildingModeChange={(newLineBuildingMode) => {
+          setLineBuildingMode(newLineBuildingMode);
+          // Разрешаем заявки только если все инструменты неактивны (нажата кнопка "Отмена")
+          if (
+            !addMode.isActive &&
+            !newLineBuildingMode.isActive &&
+            !wellConnectionMode.isActive &&
+            !houseReleaseMode.isActive
+          ) {
+            setApplicationsBlocked(false);
+            // Сбрасываем режим соединения при деактивации
+            setWellConnectionMode({
+              isActive: false,
+              startWellId: null,
+              layerType: null,
+            });
+          } else if (newLineBuildingMode.isActive) {
+            // Если инструмент активен, блокируем заявки
+            setApplicationsBlocked(true);
+            // Деактивируем режим соединения при активации другого инструмента
+            setWellConnectionMode({
+              isActive: false,
+              startWellId: null,
+              layerType: null,
+            });
+            // Деактивируем режим выпуска с дома
+            setHouseReleaseMode({
+              isActive: false,
+              layerType: null,
+              housePoint: null,
+            });
+          }
+        }}
         lineBuildingMode={lineBuildingMode}
+        onHouseReleaseModeChange={(newHouseReleaseMode) => {
+          setHouseReleaseMode(newHouseReleaseMode);
+          // Разрешаем заявки только если все инструменты неактивны (нажата кнопка "Отмена")
+          if (
+            !addMode.isActive &&
+            !lineBuildingMode.isActive &&
+            !wellConnectionMode.isActive &&
+            !newHouseReleaseMode.isActive
+          ) {
+            setApplicationsBlocked(false);
+            // Сбрасываем режим соединения при деактивации
+            setWellConnectionMode({
+              isActive: false,
+              startWellId: null,
+              layerType: null,
+            });
+          } else if (newHouseReleaseMode.isActive) {
+            // Если инструмент активен, блокируем заявки
+            setApplicationsBlocked(true);
+            // Деактивируем режим соединения при активации другого инструмента
+            setWellConnectionMode({
+              isActive: false,
+              startWellId: null,
+              layerType: null,
+            });
+            // Деактивируем режим построения линии
+            setLineBuildingMode({
+              isActive: false,
+              layerType: null,
+              startWell: null,
+            });
+          }
+        }}
+        houseReleaseMode={houseReleaseMode}
       />
 
       {/* Модальное окно для заявок/гидрантов */}
@@ -1620,6 +2310,7 @@ const MapPage = () => {
         <MapClickModal
           position={clickedPosition}
           address={clickedAddress}
+          lineId={selectedLineId}
           onClose={handleModalClose}
           onSubmit={handleModalSubmit}
         />
@@ -1637,6 +2328,7 @@ const MapPage = () => {
             setClickedPosition(null);
             setClickedAddress(null);
             setLineStartPoint(null); // Сбрасываем начальную точку линии
+            setSelectedStartWell(null); // Сбрасываем выбранный колодец
           }}
           onSubmit={async () => {
             await loadMapData();
@@ -1644,7 +2336,10 @@ const MapPage = () => {
             setClickedPosition(null);
             setClickedAddress(null);
             setLineStartPoint(null); // Сбрасываем начальную точку линии
-            setAddMode({ layerType: null, objectType: null, isActive: false });
+            setSelectedStartWell(null); // Сбрасываем выбранный колодец
+            // Оставляем инструмент активным, чтобы можно было продолжать создавать объекты
+            // Заявки остаются заблокированными, пока инструмент активен
+            setApplicationsBlocked(true);
           }}
         />
       )}

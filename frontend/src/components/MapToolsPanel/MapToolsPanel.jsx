@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './MapToolsPanel.css';
 
-const MapToolsPanel = ({ onAddModeChange, activeMode, onLineBuildingModeChange, lineBuildingMode }) => {
+const MapToolsPanel = ({ onAddModeChange, activeMode, onLineBuildingModeChange, lineBuildingMode, onHouseReleaseModeChange, houseReleaseMode }) => {
   const [layerType, setLayerType] = useState('water');
   const [objectType, setObjectType] = useState('well');
   const [isAdding, setIsAdding] = useState(false);
@@ -123,6 +123,44 @@ const MapToolsPanel = ({ onAddModeChange, activeMode, onLineBuildingModeChange, 
                 onClick={() => {
                   if (onLineBuildingModeChange) {
                     onLineBuildingModeChange({ isActive: false, layerType: null, startWell: null });
+                  }
+                }}
+                className="map-tools-panel__button map-tools-panel__button--cancel"
+                style={{ width: '100%', marginTop: '8px' }}
+              >
+                Отмена
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="map-tools-panel__field" style={{ marginTop: '16px', borderTop: '1px solid #ddd', paddingTop: '16px' }}>
+          <label className="map-tools-panel__label">
+            Выпуск с дома
+          </label>
+          {!houseReleaseMode?.isActive ? (
+            <button
+              onClick={() => {
+                if (onHouseReleaseModeChange) {
+                  onHouseReleaseModeChange({ isActive: true, layerType: layerType, housePoint: null });
+                }
+              }}
+              className="map-tools-panel__button map-tools-panel__button--add"
+              style={{ width: '100%', marginTop: '8px' }}
+            >
+              Выпуск с дома
+            </button>
+          ) : (
+            <>
+              <div className="map-tools-panel__active-indicator" style={{ marginTop: '8px' }}>
+                {houseReleaseMode.housePoint 
+                  ? 'Точка дома выбрана. Выберите колодец для создания выпуска.'
+                  : 'Выберите точку дома на карте, затем выберите колодец.'}
+              </div>
+              <button
+                onClick={() => {
+                  if (onHouseReleaseModeChange) {
+                    onHouseReleaseModeChange({ isActive: false, layerType: null, housePoint: null });
                   }
                 }}
                 className="map-tools-panel__button map-tools-panel__button--cancel"
