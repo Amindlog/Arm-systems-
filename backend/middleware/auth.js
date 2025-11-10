@@ -2,6 +2,28 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const API_KEY = process.env.API_KEY || '';
+
+// Middleware для проверки API ключа
+const validateApiKey = (req, res, next) => {
+  // Если API_KEY не установлен, пропускаем проверку (для разработки)
+  if (!API_KEY) {
+    console.warn('⚠️  API_KEY не установлен в переменных окружения. Защита отключена.');
+    return next();
+  }
+
+  const apiKey = req.headers['x-api-key'] || req.headers['api-key'];
+
+  if (!apiKey) {
+    return res.status(401).json({ error: 'API ключ отсутствует' });
+  }
+
+  if (apiKey !== API_KEY) {
+    return res.status(403).json({ error: 'Неверный API ключ' });
+  }
+
+  next();
+};
 
 // Middleware для проверки JWT токена
 const authenticateToken = async (req, res, next) => {
@@ -43,6 +65,7 @@ const requireRole = (...roles) => {
 };
 
 module.exports = {
+  validateApiKey,
   authenticateToken,
   requireRole,
   JWT_SECRET

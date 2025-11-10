@@ -8,6 +8,7 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
     address: application?.address || '',
     description: application?.description || '',
     submitted_by: application?.submitted_by || '',
+    phone: application?.phone || '',
     team_id: application?.team?.id || '',
     status: application?.status || 'new',
     completed_at: application?.completed_at || ''
@@ -17,6 +18,17 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
   const [loading, setLoading] = useState(false);
   const [loadingTeams, setLoadingTeams] = useState(true);
 
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   useEffect(() => {
     loadTeams();
     if (application) {
@@ -24,9 +36,10 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
         address: application.address || '',
         description: application.description || '',
         submitted_by: application.submitted_by || '',
+        phone: application.phone || '',
         team_id: application.team?.id || '',
         status: application.status || 'new',
-        completed_at: application.completed_at ? new Date(application.completed_at).toISOString().slice(0, 16) : ''
+        completed_at: formatDateForInput(application.completed_at)
       });
     }
   }, [application]);
@@ -66,6 +79,7 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
         address: formData.address,
         description: formData.description,
         submitted_by: formData.submitted_by,
+        phone: formData.phone,
         team_id: formData.team_id ? parseInt(formData.team_id) : null,
         status: formData.status,
         completed_at: formData.status === 'completed' && formData.completed_at ? new Date(formData.completed_at).toISOString() : null
@@ -138,6 +152,21 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
           </div>
 
           <div className="application-edit-modal__field">
+            <label htmlFor="phone" className="application-edit-modal__label">
+              Номер телефона
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="application-edit-modal__input"
+              placeholder="+7 (XXX) XXX-XX-XX"
+            />
+          </div>
+
+          <div className="application-edit-modal__field">
             <label htmlFor="team_id" className="application-edit-modal__label">
               Бригада
             </label>
@@ -172,7 +201,7 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
               <option value="new">Новая</option>
               <option value="in_progress">В работе</option>
               <option value="completed">Выполнена</option>
-              <option value="cancelled">Отменена</option>
+              <option value="cancelled">Ложная</option>
             </select>
           </div>
 
@@ -213,7 +242,14 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
             )}
             <p><strong>Создана:</strong> {new Date(application?.created_at).toLocaleString('ru-RU')}</p>
             {application?.completed_at && (
-              <p><strong>Выполнена:</strong> {new Date(application.completed_at).toLocaleString('ru-RU')}</p>
+              <p><strong>Выполнена:</strong> {new Date(application.completed_at).toLocaleString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              })}</p>
             )}
           </div>
 

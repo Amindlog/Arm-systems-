@@ -7,15 +7,24 @@ import './ApplicationsPage.css';
 const ApplicationsPage = () => {
   const [applications, setApplications] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [statusCounts, setStatusCounts] = useState({
+    new: 0,
+    in_progress: 0,
+    completed: 0,
+    cancelled: 0
+  });
   const [filters, setFilters] = useState({
     status: '',
-    team_id: ''
+    team_id: '',
+    date_from: '',
+    date_to: ''
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedApplications, setExpandedApplications] = useState(new Set());
   const [editingApplication, setEditingApplication] = useState(null);
   const [deletingApplicationId, setDeletingApplicationId] = useState(null);
+  const [editingCompletedAt, setEditingCompletedAt] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -29,14 +38,35 @@ const ApplicationsPage = () => {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
       if (filters.team_id) params.append('team_id', filters.team_id);
+      if (filters.date_from) params.append('date_from', filters.date_from);
+      if (filters.date_to) params.append('date_to', filters.date_to);
 
-      const [applicationsResponse, teamsResponse] = await Promise.all([
+      // Параметры для статистики - всегда все заявки без фильтров
+      const [applicationsResponse, teamsResponse, statsResponse] = await Promise.all([
         api.get(`/applications?${params.toString()}`),
-        api.get('/applications/teams/list')
+        api.get('/applications/teams/list'),
+        api.get('/applications')
       ]);
 
       setApplications(applicationsResponse.data.applications || []);
       setTeams(teamsResponse.data.teams || []);
+
+      // Подсчет статистики из всех заявок (без фильтра по статусу)
+      const allApps = statsResponse.data.applications || [];
+      const counts = {
+        new: 0,
+        in_progress: 0,
+        completed: 0,
+        cancelled: 0
+      };
+      
+      allApps.forEach(app => {
+        if (counts.hasOwnProperty(app.status)) {
+          counts[app.status]++;
+        }
+      });
+      
+      setStatusCounts(counts);
     } catch (err) {
       setError(err.response?.data?.error || 'Ошибка при загрузке данных');
       console.error('Error loading applications:', err);
@@ -58,6 +88,19 @@ const ApplicationsPage = () => {
       loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Ошибка при обновлении статуса');
+    }
+  };
+
+  const handleCompletedAtChange = async (applicationId, newCompletedAt) => {
+    try {
+      await api.put(`/applications/${applicationId}`, { 
+        completed_at: newCompletedAt ? new Date(newCompletedAt).toISOString() : null 
+      });
+      setEditingCompletedAt(null);
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Ошибка при обновлении времени закрытия');
+      setEditingCompletedAt(null);
     }
   };
 
@@ -96,7 +139,7 @@ const ApplicationsPage = () => {
       new: 'Новая',
       in_progress: 'В работе',
       completed: 'Выполнена',
-      cancelled: 'Отменена'
+      cancelled: 'Ложная'
     };
     return statuses[status] || status;
   };
@@ -128,6 +171,29 @@ const ApplicationsPage = () => {
     return 'applications-page__item--no-team';
   };
 
+  const formatCompletedAt = (completedAt) => {
+    if (!completedAt) return '';
+    return new Date(completedAt).toLocaleString('ru-RU', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const toggleApplication = (applicationId) => {
     setExpandedApplications(prev => {
       const newSet = new Set(prev);
@@ -147,6 +213,8 @@ const ApplicationsPage = () => {
   const user = authService.getUser();
   const canEdit = user && (user.role === 'director' || user.role === 'dispatcher');
   const canDelete = user && user.role === 'director';
+  const canEditCompletedAt = user && user.role === 'director';
+
 
   if (loading) {
     return <div className="applications-page__loading">Загрузка заявок...</div>;
@@ -159,26 +227,62 @@ const ApplicationsPage = () => {
         {error && <div className="applications-page__error">{error}</div>}
       </div>
 
-      <div className="applications-page__filters">
-        <div className="applications-page__filter">
-          <label htmlFor="status-filter" className="applications-page__filter-label">
-            Статус:
-          </label>
-          <select
-            id="status-filter"
-            name="status"
-            value={filters.status}
-            onChange={handleFilterChange}
-            className="applications-page__filter-select"
-          >
-            <option value="">Все статусы</option>
-            <option value="new">Новая</option>
-            <option value="in_progress">В работе</option>
-            <option value="completed">Выполнена</option>
-            <option value="cancelled">Отменена</option>
-          </select>
+      <div className="applications-page__stats">
+        <div 
+          className={`applications-page__stat-item applications-page__stat-item--new ${filters.status === 'new' ? 'applications-page__stat-item--active' : ''}`}
+          onClick={() => {
+            setFilters(prev => ({
+              ...prev,
+              status: prev.status === 'new' ? '' : 'new'
+            }));
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="applications-page__stat-label">Новых:</span>
+          <span className="applications-page__stat-value">{statusCounts.new}</span>
         </div>
+        <div 
+          className={`applications-page__stat-item applications-page__stat-item--in-progress ${filters.status === 'in_progress' ? 'applications-page__stat-item--active' : ''}`}
+          onClick={() => {
+            setFilters(prev => ({
+              ...prev,
+              status: prev.status === 'in_progress' ? '' : 'in_progress'
+            }));
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="applications-page__stat-label">В работе:</span>
+          <span className="applications-page__stat-value">{statusCounts.in_progress}</span>
+        </div>
+        <div 
+          className={`applications-page__stat-item applications-page__stat-item--completed ${filters.status === 'completed' ? 'applications-page__stat-item--active' : ''}`}
+          onClick={() => {
+            setFilters(prev => ({
+              ...prev,
+              status: prev.status === 'completed' ? '' : 'completed'
+            }));
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="applications-page__stat-label">Выполненных:</span>
+          <span className="applications-page__stat-value">{statusCounts.completed}</span>
+        </div>
+        <div 
+          className={`applications-page__stat-item applications-page__stat-item--cancelled ${filters.status === 'cancelled' ? 'applications-page__stat-item--active' : ''}`}
+          onClick={() => {
+            setFilters(prev => ({
+              ...prev,
+              status: prev.status === 'cancelled' ? '' : 'cancelled'
+            }));
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="applications-page__stat-label">Ложных:</span>
+          <span className="applications-page__stat-value">{statusCounts.cancelled}</span>
+        </div>
+      </div>
 
+      <div className="applications-page__filters">
         <div className="applications-page__filter">
           <label htmlFor="team-filter" className="applications-page__filter-label">
             Бригада:
@@ -197,6 +301,34 @@ const ApplicationsPage = () => {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="applications-page__filter">
+          <label htmlFor="date-from" className="applications-page__filter-label">
+            От:
+          </label>
+          <input
+            type="date"
+            id="date-from"
+            name="date_from"
+            value={filters.date_from}
+            onChange={handleFilterChange}
+            className="applications-page__filter-select"
+          />
+        </div>
+
+        <div className="applications-page__filter">
+          <label htmlFor="date-to" className="applications-page__filter-label">
+            До:
+          </label>
+          <input
+            type="date"
+            id="date-to"
+            name="date_to"
+            value={filters.date_to}
+            onChange={handleFilterChange}
+            className="applications-page__filter-select"
+          />
         </div>
       </div>
 
@@ -239,6 +371,54 @@ const ApplicationsPage = () => {
                           Подал: {app.submitted_by}
                         </span>
                       )}
+                      {app.phone && (
+                        <span className="applications-page__item-subtitle">
+                          Телефон: {app.phone}
+                        </span>
+                      )}
+                      {!expanded && app.status === 'completed' && app.completed_at && (
+                        <span className="applications-page__item-subtitle applications-page__item-subtitle--completed">
+                          {editingCompletedAt === app.id ? (
+                            <input
+                              type="datetime-local"
+                              defaultValue={formatDateForInput(app.completed_at)}
+                              onBlur={(e) => {
+                                if (e.target.value) {
+                                  handleCompletedAtChange(app.id, e.target.value);
+                                } else {
+                                  setEditingCompletedAt(null);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (e.target.value) {
+                                    handleCompletedAtChange(app.id, e.target.value);
+                                  } else {
+                                    setEditingCompletedAt(null);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setEditingCompletedAt(null);
+                                }
+                              }}
+                              autoFocus
+                              className="applications-page__completed-at-input"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span 
+                              onClick={(e) => {
+                                if (canEditCompletedAt) {
+                                  e.stopPropagation();
+                                  setEditingCompletedAt(app.id);
+                                }
+                              }}
+                              className={canEditCompletedAt ? 'applications-page__completed-at--editable' : ''}
+                            >
+                              Закрыта: {formatCompletedAt(app.completed_at)}
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -255,7 +435,7 @@ const ApplicationsPage = () => {
                         <option value="new">Новая</option>
                         <option value="in_progress">В работе</option>
                         <option value="completed">Выполнена</option>
-                        <option value="cancelled">Отменена</option>
+                        <option value="cancelled">Ложная</option>
                       </select>
                     )}
                     {!canEdit && (
@@ -321,6 +501,12 @@ const ApplicationsPage = () => {
                       </div>
                     )}
 
+                    {app.phone && (
+                      <div className="applications-page__item-field">
+                        <strong>Телефон:</strong> {app.phone}
+                      </div>
+                    )}
+
                     {app.accepted_by && (
                       <div className="applications-page__item-field">
                         <strong>Принял:</strong> {app.accepted_by.name}
@@ -335,13 +521,7 @@ const ApplicationsPage = () => {
 
                     {app.completed_at && (
                       <div className="applications-page__item-field">
-                        <strong>Время выполнения:</strong> {new Date(app.completed_at).toLocaleString('ru-RU', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        <strong>Время выполнения:</strong> {formatCompletedAt(app.completed_at)}
                       </div>
                     )}
 

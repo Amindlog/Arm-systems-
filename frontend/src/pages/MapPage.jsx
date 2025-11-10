@@ -127,6 +127,44 @@ const MapPage = () => {
     return () => window.removeEventListener("cityChange", handleCityChange);
   }, []);
 
+  // Устанавливаем значение "Сарапул, ул. " в поле поиска Яндекс Карт
+  useEffect(() => {
+    const setSearchBoxValue = () => {
+      // Ищем поле поиска по классу
+      const searchInput = document.querySelector('.ymaps-2-1-79-searchbox-input__input, .ymaps-searchbox-input__input');
+      if (searchInput) {
+        searchInput.value = 'Сарапул, ул. ';
+        // Триггерим событие input для обновления состояния
+        const event = new Event('input', { bubbles: true });
+        searchInput.dispatchEvent(event);
+        return true;
+      }
+      return false;
+    };
+
+    // Пытаемся установить значение сразу
+    if (setSearchBoxValue()) {
+      return;
+    }
+
+    // Если элемент еще не найден, ждем его появления
+    const interval = setInterval(() => {
+      if (setSearchBoxValue()) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    // Очищаем интервал через 5 секунд
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [ymapsInstance]);
+
   // Отслеживание изменений зума карты
   useEffect(() => {
     const updateZoom = () => {
@@ -825,6 +863,15 @@ const MapPage = () => {
                   window.ymaps = apiYmaps;
                   console.log("window.ymaps установлен:", window.ymaps);
                 }
+                // Устанавливаем значение "Сарапул, ул. " в поле поиска после загрузки карты
+                setTimeout(() => {
+                  const searchInput = document.querySelector('.ymaps-2-1-79-searchbox-input__input, .ymaps-searchbox-input__input, input[placeholder*="Адрес"]');
+                  if (searchInput) {
+                    searchInput.value = 'Сарапул, ул. ';
+                    const event = new Event('input', { bubbles: true });
+                    searchInput.dispatchEvent(event);
+                  }
+                }, 500);
               });
             } else if (ymaps) {
               // Если ready() недоступен, используем ymaps напрямую
@@ -833,6 +880,15 @@ const MapPage = () => {
                 window.ymaps = ymaps;
                 console.log("window.ymaps установлен напрямую:", window.ymaps);
               }
+              // Устанавливаем значение "Сарапул, ул. " в поле поиска после загрузки карты
+              setTimeout(() => {
+                const searchInput = document.querySelector('.ymaps-2-1-79-searchbox-input__input, .ymaps-searchbox-input__input, input[placeholder*="Адрес"]');
+                if (searchInput) {
+                  searchInput.value = 'Сарапул, ул. ';
+                  const event = new Event('input', { bubbles: true });
+                  searchInput.dispatchEvent(event);
+                }
+              }, 500);
             }
           }}
           onClick={async (e) => {
@@ -927,6 +983,8 @@ const MapPage = () => {
                 // Проверяем, что режим создания объектов не активен и заявки не заблокированы
                 if (!addMode.isActive && !applicationsBlocked && !houseReleaseMode.isActive) {
                   setClickedPosition(position);
+                  // Адрес уже получен выше (строка 852-856), устанавливаем его
+                  setClickedAddress(address || '');
                   setShowModal(true);
                 }
               } catch (error) {

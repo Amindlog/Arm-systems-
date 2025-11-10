@@ -7,7 +7,7 @@ const router = express.Router();
 // Получить все заявки
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { status, team_id } = req.query;
+    const { status, team_id, date_from, date_to } = req.query;
     
     let query = `
       SELECT 
@@ -15,6 +15,7 @@ router.get('/', authenticateToken, async (req, res) => {
         a.address,
         a.description,
         a.submitted_by,
+        a.phone,
         a.status,
         a.latitude,
         a.longitude,
@@ -45,6 +46,22 @@ router.get('/', authenticateToken, async (req, res) => {
       params.push(team_id);
     }
 
+    // Фильтр по дате (от)
+    if (date_from) {
+      const fromDate = new Date(date_from);
+      fromDate.setHours(0, 0, 0, 0);
+      conditions.push(`a.created_at >= $${paramCount++}`);
+      params.push(fromDate.toISOString());
+    }
+
+    // Фильтр по дате (до)
+    if (date_to) {
+      const toDate = new Date(date_to);
+      toDate.setHours(23, 59, 59, 999);
+      conditions.push(`a.created_at <= $${paramCount++}`);
+      params.push(toDate.toISOString());
+    }
+
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
@@ -63,6 +80,7 @@ router.get('/', authenticateToken, async (req, res) => {
           address: row.address,
           description: row.description,
           submitted_by: row.submitted_by,
+          phone: row.phone || null,
           status: row.status,
           coordinates: (lat != null && !isNaN(lat) && lng != null && !isNaN(lng)) ? {
             lat: lat,
@@ -100,6 +118,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         a.address,
         a.description,
         a.submitted_by,
+        a.phone,
         a.status,
         a.latitude,
         a.longitude,
@@ -127,6 +146,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       address: row.address,
       description: row.description,
       submitted_by: row.submitted_by,
+      phone: row.phone || null,
       status: row.status,
       coordinates: {
         lat: parseFloat(row.latitude),
@@ -154,7 +174,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Создать заявку (только диспетчер)
 router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async (req, res) => {
   try {
-    const { address, description, submitted_by, team_id, latitude, longitude, line_id } = req.body;
+    const { address, description, submitted_by, phone, team_id, latitude, longitude, line_id } = req.body;
 
     if (!address || !team_id || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ error: 'Адрес, бригада и координаты обязательны' });
@@ -175,10 +195,10 @@ router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async
     }
 
     const result = await pool.query(`
-      INSERT INTO applications (address, description, submitted_by, accepted_by, team_id, latitude, longitude, line_id, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'new')
-      RETURNING id, address, description, submitted_by, status, latitude, longitude, team_id, line_id, created_at
-    `, [address, description || null, submitted_by || null, req.user.id, team_id, latitude, longitude, line_id || null]);
+      INSERT INTO applications (address, description, submitted_by, phone, accepted_by, team_id, latitude, longitude, line_id, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'new')
+      RETURNING id, address, description, submitted_by, phone, status, latitude, longitude, team_id, line_id, created_at
+    `, [address, description || null, submitted_by || null, phone || null, req.user.id, team_id, latitude, longitude, line_id || null]);
 
     const application = result.rows[0];
 
@@ -193,6 +213,7 @@ router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async
         address: application.address,
         description: application.description,
         submitted_by: application.submitted_by,
+        phone: application.phone || null,
         status: application.status,
         coordinates: {
           lat: parseFloat(application.latitude),
@@ -220,7 +241,7 @@ router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { address, description, status, team_id, completed_at } = req.body;
+    const { address, description, submitted_by, phone, status, team_id, completed_at } = req.body;
 
     // Проверка существования заявки
     const existingApp = await pool.query('SELECT * FROM applications WHERE id = $1', [id]);
@@ -250,6 +271,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (description !== undefined) {
       updates.push(`description = $${paramCount++}`);
       params.push(description);
+    }
+
+    if (submitted_by !== undefined) {
+      updates.push(`submitted_by = $${paramCount++}`);
+      params.push(submitted_by);
+    }
+
+    if (phone !== undefined) {
+      updates.push(`phone = $${paramCount++}`);
+      params.push(phone);
     }
 
     if (status !== undefined) {
@@ -316,6 +347,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         address: updatedApp.address,
         description: updatedApp.description,
         submitted_by: updatedApp.submitted_by,
+        phone: updatedApp.phone || null,
         status: updatedApp.status,
         coordinates: {
           lat: parseFloat(updatedApp.latitude),

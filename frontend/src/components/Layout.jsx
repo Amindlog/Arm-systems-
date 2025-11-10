@@ -16,7 +16,7 @@ const Layout = ({ user, setUser }) => {
 
   const getRoleName = (role) => {
     const roles = {
-      director: 'Директор',
+      director: 'Разработчик',
       dispatcher: 'Диспетчер',
       plumber: 'Слесарь'
     };
@@ -27,7 +27,7 @@ const Layout = ({ user, setUser }) => {
     <div className="layout">
       <header className="layout__header">
         <div className="layout__header-content">
-          <h1 className="layout__title">Система управления водоотведением</h1>
+          <h1 className="layout__title">ARM система Диспетчер 1.0, г. Сарапула, Сарапульский водоканал</h1>
           <div className="layout__header-right">
             {isMapPage && <CitySelector />}
             <div className="layout__user-info">
@@ -48,6 +48,16 @@ const Layout = ({ user, setUser }) => {
       <main className="layout__main">
         <Outlet />
       </main>
+      <footer className="layout__footer">
+        <div className="layout__footer-content">
+          <p className="layout__copyright">
+            © {new Date().getFullYear()} ARM система Диспетчер 1.0, г. Сарапула, Сарапульский водоканал
+          </p>
+          <p className="layout__developer">
+            Разработчик: Пономарев Александр
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

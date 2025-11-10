@@ -23,6 +23,80 @@
   font-size: 14px;
 }
 
+.applications-page__stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.applications-page__stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid;
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.applications-page__stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.applications-page__stat-item--active {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  background-color: #f5f5f5;
+}
+
+.applications-page__stat-item--active.applications-page__stat-item--new {
+  background-color: #e3f2fd;
+}
+
+.applications-page__stat-item--active.applications-page__stat-item--in-progress {
+  background-color: #fff3e0;
+}
+
+.applications-page__stat-item--active.applications-page__stat-item--completed {
+  background-color: #e8f5e9;
+}
+
+.applications-page__stat-item--active.applications-page__stat-item--cancelled {
+  background-color: #ffebee;
+}
+
+.applications-page__stat-item--new {
+  border-left-color: #1976d2;
+}
+
+.applications-page__stat-item--in-progress {
+  border-left-color: #f57c00;
+}
+
+.applications-page__stat-item--completed {
+  border-left-color: #388e3c;
+}
+
+.applications-page__stat-item--cancelled {
+  border-left-color: #d32f2f;
+}
+
+.applications-page__stat-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.applications-page__stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
 .applications-page__loading {
   display: flex;
   justify-content: center;
@@ -138,6 +212,39 @@
   font-size: 13px;
   color: #666;
   font-weight: 400;
+}
+
+.applications-page__item-subtitle--completed {
+  color: #388e3c;
+  font-weight: 500;
+}
+
+.applications-page__completed-at--editable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  transition: color 0.2s;
+}
+
+.applications-page__completed-at--editable:hover {
+  color: #2e7d32;
+}
+
+.applications-page__completed-at-input {
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid #388e3c;
+  border-radius: 4px;
+  color: #388e3c;
+  font-weight: 500;
+  background: white;
+  min-width: 200px;
+}
+
+.applications-page__completed-at-input:focus {
+  outline: none;
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 2px rgba(56, 142, 60, 0.2);
 }
 
 .applications-page__status {

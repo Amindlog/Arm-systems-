@@ -8,6 +8,7 @@ const ApplicationForm = ({ position, onClose, onSubmit }) => {
     address: '',
     description: '',
     submitted_by: '',
+    phone: '',
     team_id: ''
   });
   const [teams, setTeams] = useState([]);
@@ -61,6 +62,7 @@ const ApplicationForm = ({ position, onClose, onSubmit }) => {
         address: formData.address,
         description: formData.description,
         submitted_by: formData.submitted_by,
+        phone: formData.phone,
         team_id: parseInt(formData.team_id),
         latitude: position.lat,
         longitude: position.lng
@@ -127,6 +129,21 @@ const ApplicationForm = ({ position, onClose, onSubmit }) => {
               onChange={handleChange}
               className="application-form__input"
               placeholder="ФИО заявителя"
+            />
+          </div>
+
+          <div className="application-form__field">
+            <label htmlFor="phone" className="application-form__label">
+              Номер телефона
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="application-form__input"
+              placeholder="+7 (XXX) XXX-XX-XX"
             />
           </div>
 

@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 
 const pool = require('./config/database');
+const { validateApiKey } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const applicationsRoutes = require('./routes/applications');
 const mapRoutes = require('./routes/map');
@@ -26,6 +27,15 @@ app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
+});
+
+// Применяем проверку API ключа ко всем API маршрутам (кроме health check)
+app.use('/api', (req, res, next) => {
+  // Пропускаем health check без проверки API ключа
+  if (req.path === '/health') {
+    return next();
+  }
+  validateApiKey(req, res, next);
 });
 
 // Routes
