@@ -39,9 +39,9 @@ const PipeEditModal = ({ pipe, onClose, onUpdate }) => {
 
     try {
       const updateData = {
-        pipe_size: formData.pipe_size || null,
-        balance_delimitation: formData.balance_delimitation || null,
-        pipe_material: formData.pipe_material || null
+        pipe_size: formData.pipe_size && formData.pipe_size.trim() !== '' ? formData.pipe_size : null,
+        balance_delimitation: formData.balance_delimitation && formData.balance_delimitation.trim() !== '' ? formData.balance_delimitation : null,
+        pipe_material: formData.pipe_material && formData.pipe_material.trim() !== '' ? formData.pipe_material : null
       };
 
       // Обрабатываем pipe_length отдельно, чтобы избежать NaN

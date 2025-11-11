@@ -779,6 +779,23 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Недостаточно прав для обновления объекта слоя' });
     }
 
+    // Проверяем наличие полей в таблице перед обновлением
+    let hasPipeLength = false;
+    let hasBalanceDelimitation = false;
+    let hasPipeMaterial = false;
+    try {
+      const testResult = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'layer_objects' AND column_name IN ('pipe_length', 'balance_delimitation', 'pipe_material')
+      `);
+      hasPipeLength = testResult.rows.some(r => r.column_name === 'pipe_length');
+      hasBalanceDelimitation = testResult.rows.some(r => r.column_name === 'balance_delimitation');
+      hasPipeMaterial = testResult.rows.some(r => r.column_name === 'pipe_material');
+    } catch (e) {
+      console.log('Ошибка при проверке полей:', e.message);
+    }
+
     const updates = [];
     const params = [];
     let paramCount = 1;
@@ -824,7 +841,7 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
       params.push(pipe_size);
     }
 
-    if (pipe_length !== undefined) {
+    if (pipe_length !== undefined && hasPipeLength) {
       // Проверяем, что pipe_length - это число или null
       if (pipe_length === null || (typeof pipe_length === 'number' && !isNaN(pipe_length))) {
         updates.push(`pipe_length = $${paramCount++}`);
@@ -836,14 +853,16 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
       }
     }
 
-    if (pipe_material !== undefined) {
+    if (pipe_material !== undefined && hasPipeMaterial) {
       updates.push(`pipe_material = $${paramCount++}`);
       params.push(pipe_material);
     }
 
-    if (balance_delimitation !== undefined) {
+    if (balance_delimitation !== undefined && hasBalanceDelimitation) {
+      // Преобразуем пустую строку в null
+      const balanceValue = (balance_delimitation === '' || balance_delimitation === null) ? null : balance_delimitation;
       updates.push(`balance_delimitation = $${paramCount++}`);
-      params.push(balance_delimitation);
+      params.push(balanceValue);
     }
 
     if (updates.length === 0) {
@@ -858,25 +877,16 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
     params.push(id);
     const idParamIndex = paramCount;
 
-    // Проверяем наличие полей для RETURNING
+    // Используем уже проверенные флаги для RETURNING
     let returningFields = 'id, layer_type, object_type, geojson, address, description, pipe_size';
-    try {
-      const testResult = await pool.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'layer_objects' AND column_name IN ('pipe_length', 'balance_delimitation', 'pipe_material')
-      `);
-      if (testResult.rows.some(r => r.column_name === 'pipe_length')) {
-        returningFields += ', pipe_length';
-      }
-      if (testResult.rows.some(r => r.column_name === 'balance_delimitation')) {
-        returningFields += ', balance_delimitation';
-      }
-      if (testResult.rows.some(r => r.column_name === 'pipe_material')) {
-        returningFields += ', pipe_material';
-      }
-    } catch (e) {
-      console.log('Ошибка при проверке полей для RETURNING:', e.message);
+    if (hasPipeLength) {
+      returningFields += ', pipe_length';
+    }
+    if (hasBalanceDelimitation) {
+      returningFields += ', balance_delimitation';
+    }
+    if (hasPipeMaterial) {
+      returningFields += ', pipe_material';
     }
     returningFields += ', created_at, updated_at';
 
