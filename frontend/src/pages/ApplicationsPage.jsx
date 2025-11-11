@@ -211,9 +211,9 @@ const ApplicationsPage = () => {
   };
 
   const user = authService.getUser();
-  const canEdit = user && (user.role === 'director' || user.role === 'dispatcher');
-  const canDelete = user && user.role === 'director';
-  const canEditCompletedAt = user && user.role === 'director';
+  const canEdit = user && (user.role === 'development' || user.role === 'dispatcher');
+  const canDelete = user && user.role === 'development';
+  const canEditCompletedAt = user && user.role === 'development';
 
 
   if (loading) {

@@ -895,7 +895,7 @@ const MapPage = () => {
             const user = authService.getUser();
             if (
               user &&
-              (user.role === "dispatcher" || user.role === "director")
+              (user.role === "dispatcher" || user.role === "development")
             ) {
               try {
                 const coords = e.get("coords");
@@ -1125,7 +1125,7 @@ const MapPage = () => {
                   const calculatedLength = calculateLength();
                   const displayLength = obj.pipe_length || calculatedLength;
                   const user = authService.getUser();
-                  const canEdit = user && user.role === "director";
+                  const canEdit = user && user.role === "development";
 
                   // Вычисляем геометрическую середину линии для создания заявки
                   const getLineCenter = () => {
@@ -1569,7 +1569,7 @@ const MapPage = () => {
 
                   // Проверяем права доступа для удаления (только директор)
                   const user = authService.getUser();
-                  const canDelete = user && user.role === "director";
+                  const canDelete = user && user.role === "development";
 
                   // Формируем HTML для задвижек (только для колодцев)
                   let valvesHtml = "";

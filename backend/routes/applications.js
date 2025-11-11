@@ -172,7 +172,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Создать заявку (только диспетчер)
-router.post('/', authenticateToken, requireRole('dispatcher', 'director'), async (req, res) => {
+router.post('/', authenticateToken, requireRole('dispatcher', 'development'), async (req, res) => {
   try {
     const { address, description, submitted_by, phone, team_id, latitude, longitude, line_id } = req.body;
 
@@ -250,7 +250,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     // Проверка прав доступа
-    const isDirector = req.user.role === 'director';
+    const isDirector = req.user.role === 'development';
     const isDispatcher = req.user.role === 'dispatcher';
     const isOwner = existingApp.rows[0].accepted_by === req.user.id;
 
@@ -372,8 +372,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Удалить заявку (только директор)
-router.delete('/:id', authenticateToken, requireRole('director'), async (req, res) => {
+// Удалить заявку (только разработчик)
+router.delete('/:id', authenticateToken, requireRole('development'), async (req, res) => {
   try {
     const { id } = req.params;
 

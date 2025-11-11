@@ -35,7 +35,7 @@ async function listUsersWithPasswords() {
 
     result.rows.forEach((user, index) => {
       const roleNames = {
-        director: 'Разработчик',
+        development: 'Разработчик',
         dispatcher: 'Диспетчер',
         plumber: 'Слесарь'
       };

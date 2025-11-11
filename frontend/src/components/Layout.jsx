@@ -16,7 +16,7 @@ const Layout = ({ user, setUser }) => {
 
   const getRoleName = (role) => {
     const roles = {
-      director: 'Разработчик',
+      development: 'Разработчик',
       dispatcher: 'Диспетчер',
       plumber: 'Слесарь'
     };

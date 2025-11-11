@@ -173,8 +173,8 @@ router.delete('/features/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Проверка прав доступа (только директор может удалять)
-    if (req.user.role !== 'director') {
+    // Проверка прав доступа (только разработчик может удалять)
+    if (req.user.role !== 'development') {
       return res.status(403).json({ error: 'Недостаточно прав для удаления схемы' });
     }
 
@@ -347,7 +347,7 @@ router.put('/hydrants/:id', authenticateToken, upload.array('photos', 10), async
     }
 
     // Проверка прав доступа
-    if (req.user.role !== 'director' && req.user.role !== 'dispatcher') {
+    if (req.user.role !== 'development' && req.user.role !== 'dispatcher') {
       return res.status(403).json({ error: 'Недостаточно прав для обновления гидранта' });
     }
 
@@ -463,8 +463,8 @@ router.delete('/hydrants/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Проверка прав доступа (только директор может удалять)
-    if (req.user.role !== 'director') {
+    // Проверка прав доступа (только разработчик может удалять)
+    if (req.user.role !== 'development') {
       return res.status(403).json({ error: 'Недостаточно прав для удаления гидранта' });
     }
 
@@ -487,7 +487,7 @@ router.delete('/hydrants/:id/photos/:photoId', authenticateToken, async (req, re
     const { id, photoId } = req.params;
 
     // Проверка прав доступа
-    if (req.user.role !== 'director' && req.user.role !== 'dispatcher') {
+    if (req.user.role !== 'development' && req.user.role !== 'dispatcher') {
       return res.status(403).json({ error: 'Недостаточно прав для удаления фото' });
     }
 
@@ -775,7 +775,7 @@ router.put('/layers/objects/:id', authenticateToken, async (req, res) => {
     }
 
     // Проверка прав доступа
-    if (req.user.role !== 'director' && req.user.role !== 'dispatcher') {
+    if (req.user.role !== 'development' && req.user.role !== 'dispatcher') {
       return res.status(403).json({ error: 'Недостаточно прав для обновления объекта слоя' });
     }
 
@@ -942,8 +942,8 @@ router.delete('/layers/objects/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Проверка прав доступа (только директор может удалять)
-    if (req.user.role !== 'director') {
+    // Проверка прав доступа (только разработчик может удалять)
+    if (req.user.role !== 'development') {
       return res.status(403).json({ error: 'Недостаточно прав для удаления объекта слоя' });
     }
 
@@ -1024,7 +1024,7 @@ router.post('/layers/objects/:wellId/valves', authenticateToken, async (req, res
     }
 
     // Проверка прав доступа
-    if (req.user.role !== 'director' && req.user.role !== 'dispatcher') {
+    if (req.user.role !== 'development' && req.user.role !== 'dispatcher') {
       return res.status(403).json({ error: 'Недостаточно прав для создания задвижки' });
     }
 
@@ -1062,7 +1062,7 @@ router.put('/layers/objects/:wellId/valves/:valveId', authenticateToken, async (
     const { valve_type, valve_number, status, description } = req.body;
 
     // Проверка прав доступа
-    if (req.user.role !== 'director' && req.user.role !== 'dispatcher') {
+    if (req.user.role !== 'development' && req.user.role !== 'dispatcher') {
       return res.status(403).json({ error: 'Недостаточно прав для обновления задвижки' });
     }
 
@@ -1140,8 +1140,8 @@ router.delete('/layers/objects/:wellId/valves/:valveId', authenticateToken, asyn
   try {
     const { wellId, valveId } = req.params;
 
-    // Проверка прав доступа (только директор может удалять)
-    if (req.user.role !== 'director') {
+    // Проверка прав доступа (только разработчик может удалять)
+    if (req.user.role !== 'development') {
       return res.status(403).json({ error: 'Недостаточно прав для удаления задвижки' });
     }
 

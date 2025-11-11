@@ -116,8 +116,8 @@ const HydrantsPage = () => {
   };
 
   const user = authService.getUser();
-  const canEdit = user && (user.role === 'director' || user.role === 'dispatcher');
-  const canDelete = user && user.role === 'director';
+  const canEdit = user && (user.role === 'development' || user.role === 'dispatcher');
+  const canDelete = user && user.role === 'development';
 
   if (loading) {
     return <div className="hydrants-page__loading">Загрузка гидрантов...</div>;

@@ -16,7 +16,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Проверка валидности роли
-    const validRoles = ['director', 'dispatcher', 'plumber'];
+    const validRoles = ['development', 'dispatcher', 'plumber'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ error: 'Недопустимая роль' });
     }

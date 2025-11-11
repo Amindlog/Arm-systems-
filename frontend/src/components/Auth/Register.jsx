@@ -108,7 +108,7 @@ const Register = () => {
               onChange={handleChange}
               className="auth-form__input"
             >
-              <option value="director">Директор</option>
+              <option value="development">Разработчик</option>
               <option value="dispatcher">Диспетчер</option>
               <option value="plumber">Слесарь</option>
             </select>

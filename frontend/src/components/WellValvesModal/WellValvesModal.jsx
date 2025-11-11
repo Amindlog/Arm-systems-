@@ -105,7 +105,7 @@ const WellValvesModal = ({ wellId, wellInfo, onClose, onUpdate }) => {
   };
 
   const user = authService.getUser();
-  const canEdit = user && (user.role === 'director' || user.role === 'dispatcher');
+  const canEdit = user && (user.role === 'development' || user.role === 'dispatcher');
 
   return (
     <div className="well-valves-modal-overlay" onClick={onClose}>
@@ -266,7 +266,7 @@ const WellValvesModal = ({ wellId, wellInfo, onClose, onUpdate }) => {
                       >
                         Редактировать
                       </button>
-                      {user.role === 'director' && (
+                      {user.role === 'development' && (
                         <button
                           onClick={() => handleDelete(valve.id)}
                           className="well-valves-modal__button well-valves-modal__button--delete"

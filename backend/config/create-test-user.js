@@ -17,7 +17,7 @@ async function createTestUser() {
       {
         login: 'admin',
         password: 'admin123',
-        role: 'director',
+        role: 'development',
         name: 'Администратор'
       },
       {
