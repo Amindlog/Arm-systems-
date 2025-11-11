@@ -242,14 +242,15 @@ const ApplicationEditModal = ({ application, onClose, onSubmit }) => {
             )}
             <p><strong>Создана:</strong> {new Date(application?.created_at).toLocaleString('ru-RU')}</p>
             {application?.completed_at && (
-              <p><strong>Выполнена:</strong> {new Date(application.completed_at).toLocaleString('ru-RU', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              })}</p>
+              <p><strong>Выполнена:</strong> {(() => {
+                const date = new Date(application.completed_at);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${day}.${month}.${year}, ${hours}:${minutes}`;
+              })()}</p>
             )}
           </div>
 
