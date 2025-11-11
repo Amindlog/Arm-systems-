@@ -50,6 +50,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+docker exec water_management_backend node config/migrate-pipe-material.js
+
+if [ $? -ne 0 ]; then
+    echo "❌ Ошибка при выполнении миграции migrate-pipe-material"
+    exit 1
+fi
+
 echo "Создание тестовых пользователей..."
 docker exec water_management_backend node config/create-test-user.js
 
