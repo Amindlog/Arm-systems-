@@ -38,22 +38,33 @@ const PipeEditModal = ({ pipe, onClose, onUpdate }) => {
     setLoading(true);
 
     try {
-      const updateData = {
-        pipe_size: formData.pipe_size && formData.pipe_size.trim() !== '' ? formData.pipe_size : null,
-        balance_delimitation: formData.balance_delimitation && formData.balance_delimitation.trim() !== '' ? formData.balance_delimitation : null,
-        pipe_material: formData.pipe_material && formData.pipe_material.trim() !== '' ? formData.pipe_material : null
-      };
+      const updateData = {};
+      
+      // Добавляем поля только если они определены и не пустые
+      if (formData.pipe_size !== undefined) {
+        updateData.pipe_size = formData.pipe_size && formData.pipe_size.trim() !== '' ? formData.pipe_size : null;
+      }
+      
+      if (formData.balance_delimitation !== undefined) {
+        updateData.balance_delimitation = formData.balance_delimitation && formData.balance_delimitation.trim() !== '' ? formData.balance_delimitation : null;
+      }
+      
+      if (formData.pipe_material !== undefined) {
+        updateData.pipe_material = formData.pipe_material && formData.pipe_material.trim() !== '' ? formData.pipe_material : null;
+      }
 
       // Обрабатываем pipe_length отдельно, чтобы избежать NaN
-      if (formData.pipe_length && formData.pipe_length.trim() !== '') {
-        const parsedLength = parseFloat(formData.pipe_length);
-        if (!isNaN(parsedLength)) {
-          updateData.pipe_length = parsedLength;
+      if (formData.pipe_length !== undefined) {
+        if (formData.pipe_length && formData.pipe_length.toString().trim() !== '') {
+          const parsedLength = parseFloat(formData.pipe_length);
+          if (!isNaN(parsedLength)) {
+            updateData.pipe_length = parsedLength;
+          } else {
+            updateData.pipe_length = null;
+          }
         } else {
           updateData.pipe_length = null;
         }
-      } else {
-        updateData.pipe_length = null;
       }
 
       console.log('Отправка данных для обновления трубы:', JSON.stringify(updateData, null, 2));
